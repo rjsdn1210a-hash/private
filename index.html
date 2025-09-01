@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Studio AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: #0f0f0f;
+            color: #ffffff;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 상단 바로가기 바 */
+        .top-shortcuts {
+            height: 50px;
+            background: #1a1a1a;
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 10px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .top-shortcuts::-webkit-scrollbar {
+            display: none;
+        }
+
+        .shortcut-item {
+            position: relative;
+            min-width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #ff6b35 0%, #f59e0b 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
+        }
+
+        .shortcut-item:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 16px rgba(255, 107, 53, 0.4);
+        }
+
+        .shortcut-item .tooltip {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 1000;
+        }
+
+        .shortcut-item:hover .tooltip {
+            opacity: 1;
+        }
+
+        .add-shortcut {
+            min-width: 32px;
+            height: 32px;
+            border: 2px dashed #666;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #666;
+            font-size: 18px;
+        }
+
+        .add-shortcut:hover {
+            border-color: #ff6b35;
+            color: #ff6b35;
+            transform: scale(1.1);
+        }
+
+        .main-container {
+            display: flex;
+            height: calc(100vh - 50px);
+        }
+
+        /* 왼쪽 사이드바 */
+        .sidebar {
+            width: 280px;
+            background: #1a1a1a;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            transition: width 0.3s ease;
+        }
+
+        .sidebar.collapsed {
+            width: 60px;
+        }
+
+        .sidebar-header {
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            border-bottom: 1px solid #333;
+        }
+
+        .sidebar-title {
+            font-size: 16px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ff6b35, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .sidebar.collapsed .sidebar-title {
+            display: none;
+        }
+
+        .sidebar-toggle {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .sidebar-toggle:hover {
+            background: #333;
+            color: #fff;
+        }
+
+        .files-section {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 0;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 6px;
+            margin: 0 8px 8px 8px;
+        }
+
+        .section-header:hover {
+            background: #2a2a2a;
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #ccc;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-toggle {
+            color: #888;
+            font-size: 12px;
+            transition: transform 0.2s;
+        }
+
+        .section-toggle.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .sidebar.collapsed .section-header {
+            justify-content: center;
+        }
+
+        .sidebar.collapsed .section-title span:not(.icon) {
+            display: none;
+        }
+
+        .sidebar.collapsed .section-toggle {
+            display: none;
+        }
+
+        .files-list {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 16px;
+        }
+
+        .files-list.collapsed {
+            display: none;
+        }
+
+        .file-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0 8px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .file-item:hover {
+            background: #2a2a2a;
+        }
+
+        .file-item.active {
+            background: linear-gradient(135deg, #ff6b35, #8b5cf6);
+            color: white;
+        }
+
+        .file-icon {
+            font-size: 14px;
+            width: 16px;
+            text-align: center;
+        }
+
+        .file-name {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar.collapsed .file-item {
+            justify-content: center;
+            padding: 8px;
+        }
+
+        .sidebar.collapsed .file-name {
+            display: none;
+        }
+
+        .new-file-btn {
+            background: linear-gradient(135deg, #8b5cf6, #6366f1);
+            border: none;
+            color: white;
+            padding: 10px;
+            margin: 8px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .new-file-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        }
+
+        .sidebar.collapsed .new-file-btn span:not(.icon) {
+            display: none;
+        }
+
+        /* 메인 에디터 영역 */
+        .editor-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #0f0f0f;
+        }
+
+        .editor-header {
+            height: 50px;
+            background: #1a1a1a;
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+        }
+
+        .editor-tabs {
+            display: flex;
+            gap: 2px;
+            flex: 1;
+        }
+
+        .editor-tab {
+            padding: 8px 12px;
+            background: #2a2a2a;
+            border-radius: 6px 6px 0 0;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .editor-tab.active {
+            background: linear-gradient(135deg, #8b5cf6, #6366f1);
+            color: white;
+        }
+
+        .editor-tab:not(.active):hover {
+            background: #333;
+        }
+
+        .tab-close {
+            background: none;
+            border: none;
+            color: currentColor;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 2px;
+            border-radius: 2px;
+            opacity: 0.7;
+        }
+
+        .tab-close:hover {
+            opacity: 1;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .editor-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-run {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .btn-run:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-ai {
+            background: linear-gradient(135deg, #ff6b35, #f59e0b);
+            color: white;
+        }
+
+        .btn-ai:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(255, 107, 53, 0.3);
+        }
+
+        .btn-save {
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+        }
+
+        .btn-save:hover {
+            background: #404040;
+        }
+
+        .editor-main {
+            flex: 1;
+            display: flex;
+        }
+
+        .code-editor {
+            flex: 1;
+            background: #0f0f0f;
+            border: none;
+            color: #ffffff;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            padding: 20px;
+            resize: none;
+            outline: none;
+            tab-size: 2;
+        }
+
+        .code-editor::placeholder {
+            color: #666;
+        }
+
+        /* AI 어시스턴트 패널 */
+        .ai-panel {
+            width: 350px;
+            background: #1a1a1a;
+            border-left: 1px solid #333;
+            display: none;
+            flex-direction: column;
+        }
+
+        .ai-panel.show {
+            display: flex;
+        }
+
+        .ai-header {
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            background: #2a2a2a;
+            border-bottom: 1px solid #333;
+        }
+
+        .ai-title {
+            font-size: 14px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #ff6b35, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .ai-close {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        .ai-close:hover {
+            background: #333;
+            color: #fff;
+        }
+
+        .ai-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .ai-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .ai-message {
+            padding: 12px;
+            border-radius: 8px;
+            max-width: 90%;
+            line-height: 1.5;
+            font-size: 13px;
+        }
+
+        .ai-message.user {
+            background: linear-gradient(135deg, #8b5cf6, #6366f1);
+            color: white;
+            align-self: flex-end;
+        }
+
+        .ai-message.assistant {
+            background: #2a2a2a;
+            align-self: flex-start;
+            border: 1px solid #333;
+        }
+
+        .ai-input-area {
+            padding: 16px;
+            border-top: 1px solid #333;
+        }
+
+        .ai-input {
+            width: 100%;
+            background: #0f0f0f;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            font-size: 13px;
+            resize: none;
+            outline: none;
+            min-height: 40px;
+            max-height: 120px;
+        }
+
+        .ai-input:focus {
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+        }
+
+        .ai-send {
+            position: absolute;
+            right: 24px;
+            bottom: 24px;
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #8b5cf6, #6366f1);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .ai-send:hover {
+            transform: scale(1.1);
+        }
+
+        .ai-send:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 실행 결과 패널 */
+        .output-panel {
+            height: 200px;
+            background: #1a1a1a;
+            border-top: 1px solid #333;
+            display: none;
+            flex-direction: column;
+        }
+
+        .output-panel.show {
+            display: flex;
+        }
+
+        .output-header {
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            background: #2a2a2a;
+            border-bottom: 1px solid #333;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .output-content {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            color: #ccc;
+        }
+
+        .output-clear {
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .output-clear:hover {
+            background: #333;
+            color: #fff;
+        }
+
+        /* 모달 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .modal-close:hover {
+            color: #fff;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            background: #0f0f0f;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 24px;
+        }
+
+        .modal-btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .modal-btn.primary {
+            background: linear-gradient(135deg, #8b5cf6, #6366f1);
+            color: white;
+        }
+
+        .modal-btn.primary:hover {
+            transform: translateY(-1px);
+        }
+
+        .modal-btn.secondary {
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+        }
+
+        .modal-btn.secondary:hover {
+            background: #404040;
+        }
+
+        /* 반응형 */
+        @media (max-width: 1024px) {
+            .ai-panel {
+                width: 100%;
+                position: absolute;
+                top: 0;
+                right: 0;
+                z-index: 100;
+            }
+            
+            .sidebar {
+                width: 60px;
+            }
+            
+            .sidebar-title,
+            .section-title span:not(.icon),
+            .file-name,
+            .new-file-btn span:not(.icon) {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .top-shortcuts {
+                padding: 0 8px;
+            }
+            
+            .shortcut-item {
+                min-width: 28px;
+                height: 28px;
+                font-size: 12px;
+            }
+            
+            .editor-header {
+                padding: 0 8px;
+            }
+            
+            .code-editor {
+                padding: 12px;
+                font-size: 13px;
+            }
+        }
+
+        /* 스크롤바 스타일 */
+        .files-section::-webkit-scrollbar,
+        .ai-messages::-webkit-scrollbar,
+        .output-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .files-section::-webkit-scrollbar-track,
+        .ai-messages::-webkit-scrollbar-track,
+        .output-content::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        .files-section::-webkit-scrollbar-thumb,
+        .ai-messages::-webkit-scrollbar-thumb,
+        .output-content::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 3px;
+        }
+
+        .files-section::-webkit-scrollbar-thumb:hover,
+        .ai-messages::-webkit-scrollbar-thumb:hover,
+        .output-content::-webkit-scrollbar-thumb:hover {
+            background: #666;
+        }
+    </style>
+</head>
+<body>
+    <!-- 상단 바로가기 바 -->
+    <div class="top-shortcuts" id="topShortcuts">
+        <div class="add-shortcut" onclick="showShortcutModal()" title="새 바로가기 추가">
+            +
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- 왼쪽 사이드바 -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">Code Studio</div>
+                <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+            </div>
+            
+            <div class="files-section">
+                <div class="section-header" onclick="toggleSection('recent')">
+                    <div class="section-title">
+                        <span class="icon">🕒</span>
+                        <span>최근 파일</span>
+                    </div>
+                    <div class="section-toggle" id="recentToggle">▼</div>
+                </div>
+                <ul class="files-list" id="recentFiles">
+                    <!-- 최근 파일들이 여기에 동적으로 추가됩니다 -->
+                </ul>
+
+                <div class="section-header" onclick="toggleSection('projects')">
+                    <div class="section-title">
+                        <span class="icon">📁</span>
+                        <span>내 프로젝트</span>
+                    </div>
+                    <div class="section-toggle" id="projectsToggle">▼</div>
+                </div>
+                <ul class="files-list" id="projectFiles">
+                    <!-- 프로젝트 파일들이 여기에 동적으로 추가됩니다 -->
+                </ul>
+            </div>
+
+            <button class="new-file-btn" onclick="showFileModal()">
+                <span class="icon">+</span>
+                <span>새 파일</span>
+            </button>
+        </div>
+
+        <!-- 메인 에디터 영역 -->
+        <div class="editor-area">
+            <div class="editor-header">
+                <div class="editor-tabs" id="editorTabs">
+                    <div class="editor-tab active">
+                        <span class="file-icon">🌟</span>
+                        <span>환영합니다</span>
+                    </div>
+                </div>
+                <div class="editor-actions">
+                    <button class="action-btn btn-run" onclick="runCode()">
+                        ▶ 실행
+                    </button>
+                    <button class="action-btn btn-ai" onclick="toggleAI()">
+                        🤖 AI 도움
+                    </button>
+                    <button class="action-btn btn-save" onclick="saveCurrentFile()">
+                        💾 저장
+                    </button>
+                </div>
+            </div>
+
+            <div class="editor-main">
+                <textarea class="code-editor" id="codeEditor" placeholder="여기에 코드를 작성하세요...
+
+// JavaScript 예시:
+console.log('안녕하세요! 코딩을 시작해보세요.');
+
+// HTML 예시:
+<!DOCTYPE html>
+<html>
+<head>
+    <title>내 첫 번째 페이지</title>
+</head>
+<body>
+    <h1>안녕하세요!</h1>
+    <p>이것은 제 첫 번째 웹페이지입니다.</p>
+</body>
+</html>
+
+단축키:
+Ctrl+Enter: 코드 실행
+Ctrl+S: 파일 저장
+Ctrl+N: 새 파일"></textarea>
+
+                <!-- AI 어시스턴트 패널 -->
+                <div class="ai-panel" id="aiPanel">
+                    <div class="ai-header">
+                        <div class="ai-title">🤖 AI 코드 어시스턴트</div>
+                        <button class="ai-close" onclick="toggleAI()">×</button>
+                    </div>
+                    <div class="ai-content">
+                        <div class="ai-messages" id="aiMessages">
+                            <div class="ai-message assistant">
+                                안녕하세요! 저는 여러분의 코딩을 도와드리는 AI 어시스턴트입니다. 🚀
+                                
+                                다음과 같은 도움을 드릴 수 있습니다:
+                                • 코드 분석 및 개선 제안
+                                • 버그 찾기 및 수정 방법
+                                • 코드 최적화 팁
+                                • 프로그래밍 질문 답변
+                                
+                                코드를 붙여넣거나 질문을 입력해보세요!
+                            </div>
+                        </div>
+                        <div class="ai-input-area" style="position: relative;">
+                            <textarea class="ai-input" id="aiInput" placeholder="코드나 질문을 입력하세요..." rows="3"></textarea>
+                            <button class="ai-send" onclick="sendToAI()" id="aiSendBtn">▲</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 실행 결과 패널 -->
+            <div class="output-panel" id="outputPanel">
+                <div class="output-header">
+                    <span>실행 결과</span>
+                    <button class="output-clear" onclick="clearOutput()">지우기</button>
+                </div>
+                <div class="output-content" id="outputContent">
+                    코드를 실행하면 결과가 여기에 표시됩니다.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 새 파일 모달 -->
+    <div class="modal" id="fileModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">새 파일 생성</h3>
+                <button class="modal-close" onclick="closeModal('fileModal')">×</button>
+            </div>
+            <form onsubmit="createNewFile(event)">
+                <div class="form-group">
+                    <label class="form-label">파일 이름</label>
+                    <input type="text" class="form-input" id="fileName" placeholder="예: index.html" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">파일 타입</label>
+                    <select class="form-input" id="fileType">
+                        <option value="html">HTML</option>
+                        <option value="css">CSS</option>
+                        <option value="js">JavaScript</option>
+                        <option value="py">Python</option>
+                        <option value="txt">텍스트</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="modal-btn secondary" onclick="closeModal('fileModal')">취소</button>
+                    <button type="submit" class="modal-btn primary">생성</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 바로가기 모달 -->
+    <div class="modal" id="shortcutModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">바로가기 추가</h3>
+                <button class="modal-close" onclick="closeModal('shortcutModal')">×</button>
+            </div>
+            <form onsubmit="createShortcut(event)">
+                <div class="form-group">
+                    <label class="form-label">제목</label>
+                    <input type="text" class="form-input" id="shortcutTitle" placeholder="예: GitHub" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">URL</label>
+                    <input type="url" class="form-input" id="shortcutUrl" placeholder="https://github.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">아이콘 (이모지)</label>
+                    <input type="text" class="form-input" id="shortcutIcon" placeholder="🌐" maxlength="2">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="modal-btn secondary" onclick="closeModal('shortcutModal')">취소</button>
+                    <button type="submit" class="modal-btn primary">추가</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수
+        let currentFile = null;
+        let files = [];
+        let shortcuts = [];
+        let aiMessages = [];
+        let sectionStates = {
+            recent: true,
+            projects: true
+        };
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSavedData();
+            setupEventListeners();
+            addDefaultShortcuts();
+            addDefaultFiles();
+            updateUI();
+        });
+
+        // 저장된 데이터 로드
+        function loadSavedData() {
+            const savedFiles = localStorage.getItem('codeStudioFiles');
+            const savedShortcuts = localStorage.getItem('codeStudioShortcuts');
+            const savedSections = localStorage.getItem('codeStudioSections');
+
+            if (savedFiles) {
+                files = JSON.parse(savedFiles);
+            }
+            if (savedShortcuts) {
+                shortcuts = JSON.parse(savedShortcuts);
+            }
+            if (savedSections) {
+                sectionStates = JSON.parse(savedSections);
+            }
+        }
+
+        // 데이터 저장
+        function saveData() {
+            localStorage.setItem('codeStudioFiles', JSON.stringify(files));
+            localStorage.setItem('codeStudioShortcuts', JSON.stringify(shortcuts));
+            localStorage.setItem('codeStudioSections', JSON.stringify(sectionStates));
+        }
+
+        // 이벤트 리스너 설정
+        function setupEventListeners() {
+            // 키보드 단축키
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey || e.metaKey) {
+                    switch(e.key) {
+                        case 'Enter':
+                            e.preventDefault();
+                            runCode();
+                            break;
+                        case 's':
+                            e.preventDefault();
+                            saveCurrentFile();
+                            break;
+                        case 'n':
+                            e.preventDefault();
+                            showFileModal();
+                            break;
+                    }
+                }
+            });
+
+            // AI 입력 Enter 키
+            document.getElementById('aiInput').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendToAI();
+                }
+            });
+
+            // 코드 에디터 자동 저장
+            document.getElementById('codeEditor').addEventListener('input', debounce(autoSave, 2000));
+        }
+
+        // 기본 바로가기 추가
+        function addDefaultShortcuts() {
+            if (shortcuts.length === 0) {
+                shortcuts = [
+                    { title: 'GitHub', url: 'https://github.com', icon: '🐱' },
+                    { title: 'Stack Overflow', url: 'https://stackoverflow.com', icon: '📚' },
+                    { title: 'MDN', url: 'https://developer.mozilla.org', icon: '🌐' },
+                    { title: 'CodePen', url: 'https://codepen.io', icon: '✨' }
+                ];
+                saveData();
+            }
+        }
+
+        // 기본 파일 추가
+        function addDefaultFiles() {
+            if (files.length === 0) {
+                files = [
+                    {
+                        id: 'welcome',
+                        name: '환영합니다.md',
+                        type: 'md',
+                        content: `# Code Studio AI에 오신 것을 환영합니다! 🎉
+
+이것은 당신의 개인 코딩 스튜디오입니다.
+
+## 주요 기능
+
+- 🖥️ **다중 언어 지원**: HTML, CSS, JavaScript, Python 등
+- 🤖 **AI 어시스턴트**: 코드 분석, 버그 찾기, 최적화 제안
+- 📁 **파일 관리**: 프로젝트와 파일을 체계적으로 관리
+- 🔗 **바로가기**: 자주 사용하는 사이트에 빠른 접근
+- ▶️ **실시간 실행**: 코드를 바로 실행하고 결과 확인
+
+## 시작하기
+
+1. 왼쪽 사이드바에서 "새 파일" 버튼을 클릭
+2. 코드를 작성하고 Ctrl+Enter로 실행
+3. AI 어시스턴트에게 도움 요청
+4. 상단 바로가기로 필요한 사이트에 빠른 접근
+
+즐거운 코딩 되세요! 🚀`,
+                        lastModified: new Date(),
+                        category: 'recent'
+                    },
+                    {
+                        id: 'sample-js',
+                        name: 'sample.js',
+                        type: 'js',
+                        content: `// JavaScript 샘플 코드
+console.log('Hello, Code Studio AI!');
+
+// 간단한 함수 예제
+function greetUser(name) {
+    return \`안녕하세요, \${name}님! 🎉\`;
+}
+
+// 함수 실행
+const message = greetUser('개발자');
+console.log(message);
+
+// 배열과 반복문
+const languages = ['JavaScript', 'Python', 'HTML', 'CSS'];
+console.log('지원하는 언어들:');
+languages.forEach((lang, index) => {
+    console.log(\`\${index + 1}. \${lang}\`);
+});`,
+                        lastModified: new Date(),
+                        category: 'projects'
+                    }
+                ];
+                saveData();
+            }
+        }
+
+        // UI 업데이트
+        function updateUI() {
+            updateShortcuts();
+            updateFilesList();
+            updateSections();
+        }
+
+        // 바로가기 업데이트
+        function updateShortcuts() {
+            const container = document.getElementById('topShortcuts');
+            const addBtn = container.querySelector('.add-shortcut');
+            
+            // 기존 바로가기 제거 (add 버튼 제외)
+            const existingShortcuts = container.querySelectorAll('.shortcut-item');
+            existingShortcuts.forEach(item => item.remove());
+
+            // 바로가기 추가
+            shortcuts.forEach(shortcut => {
+                const item = document.createElement('a');
+                item.className = 'shortcut-item';
+                item.href = shortcut.url;
+                item.target = '_blank';
+                item.rel = 'noopener noreferrer';
+                item.innerHTML = `
+                    ${shortcut.icon || '🌐'}
+                    <div class="tooltip">${shortcut.title}</div>
+                `;
+                container.insertBefore(item, addBtn);
+            });
+        }
+
+        // 파일 목록 업데이트
+        function updateFilesList() {
+            const recentFiles = document.getElementById('recentFiles');
+            const projectFiles = document.getElementById('projectFiles');
+
+            recentFiles.innerHTML = '';
+            projectFiles.innerHTML = '';
+
+            files.forEach(file => {
+                const item = document.createElement('li');
+                item.className = 'file-item';
+                if (currentFile && currentFile.id === file.id) {
+                    item.classList.add('active');
+                }
+                
+                const icon = getFileIcon(file.type);
+                item.innerHTML = `
+                    <span class="file-icon">${icon}</span>
+                    <span class="file-name">${file.name}</span>
+                `;
+                
+                item.onclick = () => openFile(file);
+                
+                if (file.category === 'recent') {
+                    recentFiles.appendChild(item);
+                } else {
+                    projectFiles.appendChild(item);
+                }
+            });
+        }
+
+        // 섹션 상태 업데이트
+        function updateSections() {
+            Object.keys(sectionStates).forEach(section => {
+                const toggle = document.getElementById(section + 'Toggle');
+                const list = document.getElementById(section + 'Files');
+                
+                if (sectionStates[section]) {
+                    toggle.textContent = '▼';
+                    toggle.classList.remove('collapsed');
+                    list.classList.remove('collapsed');
+                } else {
+                    toggle.textContent = '▶';
+                    toggle.classList.add('collapsed');
+                    list.classList.add('collapsed');
+                }
+            });
+        }
+
+        // 파일 아이콘 가져오기
+        function getFileIcon(type) {
+            const icons = {
+                'js': '📜',
+                'html': '🌐',
+                'css': '🎨',
+                'py': '🐍',
+                'md': '📝',
+                'txt': '📄',
+                'json': '📋'
+            };
+            return icons[type] || '📄';
+        }
+
+        // 사이드바 토글
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+        }
+
+        // 섹션 토글
+        function toggleSection(sectionName) {
+            sectionStates[sectionName] = !sectionStates[sectionName];
+            updateSections();
+            saveData();
+        }
+
+        // AI 패널 토글
+        function toggleAI() {
+            const aiPanel = document.getElementById('aiPanel');
+            aiPanel.classList.toggle('show');
+        }
+
+        // 파일 모달 표시
+        function showFileModal() {
+            const modal = document.getElementById('fileModal');
+            modal.classList.add('show');
+            document.getElementById('fileName').focus();
+        }
+
+        // 바로가기 모달 표시
+        function showShortcutModal() {
+            const modal = document.getElementById('shortcutModal');
+            modal.classList.add('show');
+            document.getElementById('shortcutTitle').focus();
+        }
+
+        // 모달 닫기
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.remove('show');
+            
+            // 폼 초기화
+            const form = modal.querySelector('form');
+            if (form) form.reset();
+        }
+
+        // 새 파일 생성
+        function createNewFile(event) {
+            event.preventDefault();
+            
+            const fileName = document.getElementById('fileName').value.trim();
+            const fileType = document.getElementById('fileType').value;
+            
+            if (!fileName) return;
+
+            const newFile = {
+                id: 'file_' + Date.now(),
+                name: fileName.includes('.') ? fileName : `${fileName}.${fileType}`,
+                type: fileType,
+                content: getDefaultContent(fileType),
+                lastModified: new Date(),
+                category: 'projects'
+            };
+
+            files.push(newFile);
+            saveData();
+            updateFilesList();
+            openFile(newFile);
+            closeModal('fileModal');
+        }
+
+        // 바로가기 생성
+        function createShortcut(event) {
+            event.preventDefault();
+            
+            const title = document.getElementById('shortcutTitle').value.trim();
+            const url = document.getElementById('shortcutUrl').value.trim();
+            const icon = document.getElementById('shortcutIcon').value.trim();
+            
+            if (!title || !url) return;
+
+            shortcuts.push({
+                title,
+                url,
+                icon: icon || '🌐'
+            });
+
+            saveData();
+            updateShortcuts();
+            closeModal('shortcutModal');
+        }
+
+        // 기본 파일 내용
+        function getDefaultContent(type) {
+            const templates = {
+                'html': `<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>새 페이지</title>
+</head>
+<body>
+    <h1>안녕하세요!</h1>
+    <p>새로운 HTML 페이지입니다.</p>
+</body>
+</html>`,
+                'css': `/* CSS 스타일 */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f5f5f5;
+}
+
+h1 {
+    color: #333;
+    text-align: center;
+}`,
+                'js': `// JavaScript 코드
+console.log('새 JavaScript 파일입니다!');
+
+function sayHello(name) {
+    return \`안녕하세요, \${name}님!\`;
+}
+
+// 함수 실행
+console.log(sayHello('개발자'));`,
+                'py': `# Python 코드
+print("새 Python 파일입니다!")
+
+def say_hello(name):
+    return f"안녕하세요, {name}님!"
+
+# 함수 실행
+print(say_hello("개발자"))`,
+                'txt': '새 텍스트 파일입니다.\n여기에 내용을 작성하세요.'
+            };
+            return templates[type] || '';
+        }
+
+        // 파일 열기
+        function openFile(file) {
+            currentFile = file;
+            document.getElementById('codeEditor').value = file.content;
+            updateFilesList();
+            updateEditorTab(file);
+        }
+
+        // 에디터 탭 업데이트
+        function updateEditorTab(file) {
+            const tabsContainer = document.getElementById('editorTabs');
+            tabsContainer.innerHTML = `
+                <div class="editor-tab active">
+                    <span class="file-icon">${getFileIcon(file.type)}</span>
+                    <span>${file.name}</span>
+                    <button class="tab-close" onclick="closeTab(event)">×</button>
+                </div>
+            `;
+        }
+
+        // 탭 닫기
+        function closeTab(event) {
+            event.stopPropagation();
+            currentFile = null;
+            document.getElementById('codeEditor').value = '';
+            document.getElementById('editorTabs').innerHTML = `
+                <div class="editor-tab active">
+                    <span class="file-icon">🌟</span>
+                    <span>환영합니다</span>
+                </div>
+            `;
+            updateFilesList();
+        }
+
+        // 파일 저장
+        function saveCurrentFile() {
+            if (!currentFile) {
+                alert('저장할 파일을 선택해주세요.');
+                return;
+            }
+
+            const content = document.getElementById('codeEditor').value;
+            const fileIndex = files.findIndex(f => f.id === currentFile.id);
+            
+            if (fileIndex !== -1) {
+                files[fileIndex].content = content;
+                files[fileIndex].lastModified = new Date();
+                saveData();
+                
+                // 성공 표시
+                const saveBtn = document.querySelector('.btn-save');
+                const originalText = saveBtn.innerHTML;
+                saveBtn.innerHTML = '✓ 저장됨';
+                saveBtn.style.background = '#10b981';
+                
+                setTimeout(() => {
+                    saveBtn.innerHTML = originalText;
+                    saveBtn.style.background = '#333';
+                }, 2000);
+            }
+        }
+
+        // 자동 저장
+        function autoSave() {
+            if (currentFile) {
+                const content = document.getElementById('codeEditor').value;
+                const fileIndex = files.findIndex(f => f.id === currentFile.id);
+                
+                if (fileIndex !== -1) {
+                    files[fileIndex].content = content;
+                    files[fileIndex].lastModified = new Date();
+                    saveData();
+                }
+            }
+        }
+
+        // 코드 실행
+        function runCode() {
+            const code = document.getElementById('codeEditor').value;
+            const outputPanel = document.getElementById('outputPanel');
+            const outputContent = document.getElementById('outputContent');
+            
+            if (!code.trim()) {
+                alert('실행할 코드를 입력해주세요.');
+                return;
+            }
+
+            outputPanel.classList.add('show');
+            outputContent.textContent = '코드를 실행 중입니다...\n';
+
+            try {
+                if (currentFile && currentFile.type === 'js') {
+                    // JavaScript 실행 (안전하게)
+                    const originalConsoleLog = console.log;
+                    let output = '';
+                    
+                    console.log = (...args) => {
+                        output += args.join(' ') + '\n';
+                    };
+
+                    eval(code);
+                    console.log = originalConsoleLog;
+                    
+                    outputContent.textContent = output || '실행 완료 (출력 없음)';
+                } else if (currentFile && currentFile.type === 'html') {
+                    // HTML 미리보기
+                    const newWindow = window.open('', '_blank');
+                    newWindow.document.write(code);
+                    newWindow.document.close();
+                    outputContent.textContent = '새 창에서 HTML이 열렸습니다.';
+                } else {
+                    outputContent.textContent = `${currentFile?.type?.toUpperCase() || '알 수 없는'} 파일 실행은 지원되지 않습니다.\n현재 JavaScript와 HTML만 지원됩니다.`;
+                }
+            } catch (error) {
+                outputContent.textContent = `오류 발생:\n${error.message}`;
+            }
+        }
+
+        // 출력 지우기
+        function clearOutput() {
+            document.getElementById('outputContent').textContent = '코드를 실행하면 결과가 여기에 표시됩니다.';
+        }
+
+        // AI에게 메시지 보내기
+        function sendToAI() {
+            const input = document.getElementById('aiInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+
+            addAIMessage('user', message);
+            input.value = '';
+            
+            // AI 응답 시뮬레이션
+            setTimeout(() => {
+                const response = generateAIResponse(message);
+                addAIMessage('assistant', response);
+            }, 1000);
+        }
+
+        // AI 메시지 추가
+        function addAIMessage(type, content) {
+            const messagesContainer = document.getElementById('aiMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `ai-message ${type}`;
+            messageDiv.textContent = content;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // AI 응답 생성 (시뮬레이션)
+        function generateAIResponse(userMessage) {
+            const responses = {
+                'hello': '안녕하세요! 코딩에 관해 어떤 도움이 필요하신가요?',
+                'help': '다음과 같은 도움을 드릴 수 있습니다:\n• 코드 리뷰 및 최적화\n• 버그 찾기 및 수정\n• 프로그래밍 질문 답변\n• 코드 설명',
+                'bug': '버그를 찾고 계시는군요! 코드를 붙여넣어 주시면 분석해드리겠습니다.',
+                'optimize': '코드 최적화를 원하시는군요. 현재 코드를 공유해주시면 개선점을 제안드리겠습니다.',
+                'default': '죄송하지만 정확히 이해하지 못했습니다. 더 구체적으로 설명해주시거나 코드를 공유해주세요.'
+            };
+
+            const lowerMessage = userMessage.toLowerCase();
+            
+            if (lowerMessage.includes('안녕') || lowerMessage.includes('hello')) {
+                return responses.hello;
+            } else if (lowerMessage.includes('도움') || lowerMessage.includes('help')) {
+                return responses.help;
+            } else if (lowerMessage.includes('버그') || lowerMessage.includes('오류') || lowerMessage.includes('에러')) {
+                return responses.bug;
+            } else if (lowerMessage.includes('최적화') || lowerMessage.includes('개선')) {
+                return responses.optimize;
+            } else if (userMessage.includes('function') || userMessage.includes('console.log') || userMessage.includes('var ') || userMessage.includes('let ') || userMessage.includes('const ')) {
+                return '코드를 분석해보니 JavaScript 코드네요! 다음과 같은 개선점을 제안합니다:\n• 변수명을 더 명확하게 지정\n• 주석 추가로 가독성 향상\n• 에러 처리 추가 고려';
+            } else {
+                return responses.default;
+            }
+        }
+
+        // 디바운스 함수
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // 모달 외부 클릭으로 닫기
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('show');
+            }
+        });
+    </script>
+</body>
+</html>
+                
