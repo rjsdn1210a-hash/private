@@ -1,9 +1,708 @@
-<!DOCTYPE html>
+    <script>
+        // 전역 변수
+        let currentFile = null;
+        let files = [];
+        let shortcuts = [];
+        let aiMessages = [];
+        let sectionStates = {
+            favorites: true,
+            recent: true,
+            projects: true
+        };
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSavedData();
+            setupEventListeners();
+            addDefaultShortcuts();
+            addDefaultFiles();
+            updateUI();
+            updateLineNumbers();
+        });
+
+        // 데이터 저장/로드 (localStorage 대신 메모리 사용)
+        function loadSavedData() {
+            // 브라우저 환경에서는 메모리에만 저장
+        }
+
+        function saveData() {
+            // 브라우저 환경에서는 메모리에만 저장
+        }
+
+        // 이벤트 리스너 설정
+        function setupEventListeners() {
+            const editor = document.getElementById('codeEditor');
+            
+            // Tab 키 지원
+            editor.addEventListener('keydown', function(e) {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const start = this.selectionStart;
+                    const end = this.selectionEnd;
+                    
+                    if (e.shiftKey) {
+                        // Shift+Tab: 내어쓰기
+                        const beforeCursor = this.value.substring(0, start);
+                        const lines = beforeCursor.split('\n');
+                        const currentLineStart = beforeCursor.lastIndexOf('\n') + 1;
+                        const currentLine = this.value.substring(currentLineStart, start);
+                        
+                        if (currentLine.startsWith('    ')) {
+                            this.value = this.value.substring(0, currentLineStart) + 
+                                        currentLine.substring(4) + 
+                                        this.value.substring(start);
+                            this.selectionStart = this.selectionEnd = start - 4;
+                        }
+                    } else {
+                        // Tab: 들여쓰기
+                        this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+                        this.selectionStart = this.selectionEnd = start + 4;
+                    }
+                    updateLineNumbers();
+                }
+                
+                // 자동 괄호 완성
+                if (e.key === '{') {
+                    e.preventDefault();
+                    const start = this.selectionStart;
+                    const beforeCursor = this.value.substring(0, start);
+                    const afterCursor = this.value.substring(start);
+                    const lines = beforeCursor.split('\n');
+                    const currentLine = lines[lines.length - 1];
+                    const currentIndent = currentLine.match(/^\s*/)[0];
+                    
+                    this.value = beforeCursor + '{\n' + currentIndent + '    \n' + currentIndent + '}' + afterCursor;
+                    this.selectionStart = this.selectionEnd = start + 2 + currentIndent.length + 4;
+                    updateLineNumbers();
+                }
+                
+                if (e.key === '(') {
+                    e.preventDefault();
+                    const start = this.selectionStart;
+                    this.value = this.value.substring(0, start) + '()' + this.value.substring(start);
+                    this.selectionStart = this.selectionEnd = start + 1;
+                }
+                
+                if (e.key === '[') {
+                    e.preventDefault();
+                    const start = this.selectionStart;
+                    this.value = this.value.substring(0, start) + '[]' + this.value.substring(start);
+                    this.selectionStart = this.selectionEnd = start + 1;
+                }
+                
+                if (e.key === '"') {
+                    e.preventDefault();
+                    const start = this.selectionStart;
+                    this.value = this.value.substring(0, start) + '""' + this.value.substring(start);
+                    this.selectionStart = this.selectionEnd = start + 1;
+                }
+                
+                if (e.key === "'") {
+                    e.preventDefault();
+                    const start = this.selectionStart;
+                    this.value = this.value.substring(0, start) + "''" + this.value.substring(start);
+                    this.selectionStart = this.selectionEnd = start + 1;
+                }
+                
+                // Ctrl 단축키
+                if (e.ctrlKey || e.metaKey) {
+                    switch(e.key) {
+                        case 'Enter':
+                            e.preventDefault();
+                            runCode();
+                            break;
+                        case 's':
+                            e.preventDefault();
+                            saveCurrentFile();
+                            break;
+                        case 'n':
+                            e.preventDefault();
+                            showFileModal();
+                            break;
+                    }
+                }
+            });
+
+            // 에디터 입력 시 라인 번호 업데이트
+            editor.addEventListener('input', function() {
+                updateLineNumbers();
+                debounce(autoSave, 2000)();
+            });
+
+            editor.addEventListener('scroll', function() {
+                document.getElementById('lineNumbers').scrollTop = this.scrollTop;
+            });
+
+            // AI 입력 Enter 키
+            document.getElementById('aiInput').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendToAI();
+                }
+            });
+        }
+
+        // 라인 번호 업데이트
+        function updateLineNumbers() {
+            const editor = document.getElementById('codeEditor');
+            const lineNumbers = document.getElementById('lineNumbers');
+            const lines = editor.value.split('\n').length;
+            
+            let html = '';
+            for (let i = 1; i <= lines; i++) {
+                html += `<div class="line-number">${i}</div>`;
+            }
+            lineNumbers.innerHTML = html;
+        }
+
+        // 기본 바로가기 추가
+        function addDefaultShortcuts() {
+            if (shortcuts.length === 0) {
+                shortcuts = [
+                    { title: 'GitHub', url: 'https://github.com', icon: '🔗' },
+                    { title: 'FRC Docs', url: 'https://docs.wpilib.org', icon: '📚' },
+                    { title: 'Stack Overflow', url: 'https://stackoverflow.com', icon: '💡' },
+                    { title: 'MDN', url: 'https://developer.mozilla.org', icon: '📖' }
+                ];
+            }
+        }
+
+        // 기본 파일 추가
+        function addDefaultFiles() {
+            if (files.length === 0) {
+                files = [
+                    {
+                        id: 'welcome',
+                        name: '환영합니다.md',
+                        type: 'md',
+                        content: `# Code Studio AI - FRC Edition 🤖
+
+당신의 로봇 프로그래밍 파트너입니다.
+
+## 주요 기능
+
+- 🎯 **다중 언어 지원**: C, C++, Java, Python, JavaScript, HTML, CSS
+- 🤖 **AI 어시스턴트**: FRC 로봇 프로그래밍 특화 도움
+- ⭐ **즐겨찾기**: 중요한 파일을 빠르게 접근
+- 🔗 **바로가기**: 자주 사용하는 사이트 빠른 접근
+- ⚡ **스마트 에디터**: 자동 완성, Tab 지원
+
+## 단축키
+
+- Tab: 들여쓰기
+- Shift+Tab: 내어쓰기  
+- Ctrl+Enter: 코드 실행
+- Ctrl+S: 파일 저장
+- Ctrl+N: 새 파일
+
+즐거운 코딩 되세요! 🚀`,
+                        lastModified: new Date(),
+                        category: 'recent',
+                        favorite: false
+                    },
+                    {
+                        id: 'robot-example',
+                        name: 'Robot.cpp',
+                        type: 'cpp',
+                        content: `// FRC Robot Example Code
+#include <frc/TimedRobot.h>
+#include <frc/Joystick.h>
+#include <frc/drive/DifferentialDrive.h>
+#include <frc/motorcontrol/PWMSparkMax.h>
+
+class Robot : public frc::TimedRobot {
+private:
+    frc::PWMSparkMax m_leftMotor{0};
+    frc::PWMSparkMax m_rightMotor{1};
+    frc::DifferentialDrive m_robotDrive{m_leftMotor, m_rightMotor};
+    frc::Joystick m_stick{0};
+
+public:
+    void RobotInit() override {
+        // 로봇 초기화 코드
+        m_rightMotor.SetInverted(true);
+    }
+
+    void TeleopPeriodic() override {
+        // 조이스틱으로 로봇 제어
+        m_robotDrive.ArcadeDrive(-m_stick.GetY(), -m_stick.GetX());
+    }
+};
+
+#ifndef RUNNING_FRC_TESTS
+int main() {
+    return frc::StartRobot<Robot>();
+}
+#endif`,
+                        lastModified: new Date(),
+                        category: 'projects',
+                        favorite: true
+                    }
+                ];
+            }
+        }
+
+        // UI 업데이트
+        function updateUI() {
+            updateShortcuts();
+            updateFilesList();
+            updateSections();
+        }
+
+        // 바로가기 업데이트
+        function updateShortcuts() {
+            const container = document.getElementById('topShortcuts');
+            const addBtn = container.querySelector('.add-shortcut');
+            
+            // 기존 바로가기 제거
+            const existingShortcuts = container.querySelectorAll('.shortcut-item');
+            existingShortcuts.forEach(item => item.remove());
+
+            // 바로가기 추가
+            shortcuts.forEach((shortcut, index) => {
+                const item = document.createElement('a');
+                item.className = 'shortcut-item';
+                item.href = shortcut.url;
+                item.target = '_blank';
+                item.rel = 'noopener noreferrer';
+                item.innerHTML = `
+                    ${shortcut.icon || '🔗'}
+                    <div class="tooltip">${shortcut.title}</div>
+                    <div class="shortcut-delete" onclick="deleteShortcut(event, ${index})">×</div>
+                `;
+                container.insertBefore(item, addBtn);
+            });
+        }
+
+        // 바로가기 삭제
+        function deleteShortcut(event, index) {
+            event.preventDefault();
+            event.stopPropagation();
+            shortcuts.splice(index, 1);
+            updateShortcuts();
+        }
+
+        // 파일 목록 업데이트
+        function updateFilesList() {
+            const favoriteFiles = document.getElementById('favoriteFiles');
+            const recentFiles = document.getElementById('recentFiles');
+            const projectFiles = document.getElementById('projectFiles');
+
+            favoriteFiles.innerHTML = '';
+            recentFiles.innerHTML = '';
+            projectFiles.innerHTML = '';
+
+            files.forEach((file, index) => {
+                const item = document.createElement('li');
+                item.className = 'file-item';
+                if (currentFile && currentFile.id === file.id) {
+                    item.classList.add('active');
+                }
+                if (file.favorite) {
+                    item.classList.add('favorite');
+                }
+                
+                const icon = getFileIcon(file.type);
+                item.innerHTML = `
+                    <span class="file-icon">${icon}</span>
+                    <span class="file-name" title="${file.name}">${file.name}</span>
+                    <div class="file-actions">
+                        <button class="file-action-btn" onclick="toggleFavorite(${index})" title="즐겨찾기">
+                            ${file.favorite ? '★' : '☆'}
+                        </button>
+                        <button class="file-action-btn delete" onclick="deleteFile(${index})" title="삭제">
+                            ×
+                        </button>
+                    </div>
+                `;
+                
+                item.onclick = (e) => {
+                    if (!e.target.classList.contains('file-action-btn')) {
+                        openFile(file);
+                    }
+                };
+                
+                if (file.favorite) {
+                    favoriteFiles.appendChild(item.cloneNode(true));
+                    favoriteFiles.lastChild.onclick = (e) => {
+                        if (!e.target.classList.contains('file-action-btn')) {
+                            openFile(file);
+                        }
+                    };
+                }
+                
+                if (file.category === 'recent') {
+                    recentFiles.appendChild(item.cloneNode(true));
+                    recentFiles.lastChild.onclick = (e) => {
+                        if (!e.target.classList.contains('file-action-btn')) {
+                            openFile(file);
+                        }
+                    };
+                } else if (file.category === 'projects') {
+                    projectFiles.appendChild(item.cloneNode(true));
+                    projectFiles.lastChild.onclick = (e) => {
+                        if (!e.target.classList.contains('file-action-btn')) {
+                            openFile(file);
+                        }
+                    };
+                }
+            });
+        }
+
+        // 파일 아이콘 반환
+        function getFileIcon(type) {
+            const icons = {
+                'html': '🌐',
+                'css': '🎨', 
+                'js': '⚡',
+                'py': '🐍',
+                'java': '☕',
+                'c': '⚙️',
+                'cpp': '🔧',
+                'txt': '📄',
+                'md': '📝'
+            };
+            return icons[type] || '📄';
+        }
+
+        // 파일 즐겨찾기 토글
+        function toggleFavorite(index) {
+            files[index].favorite = !files[index].favorite;
+            updateFilesList();
+        }
+
+        // 파일 삭제
+        function deleteFile(index) {
+            if (confirm('이 파일을 삭제하시겠습니까?')) {
+                const fileToDelete = files[index];
+                files.splice(index, 1);
+                
+                // 현재 열린 파일이 삭제된 경우
+                if (currentFile && currentFile.id === fileToDelete.id) {
+                    currentFile = null;
+                    document.getElementById('codeEditor').value = '';
+                    updateTabs();
+                }
+                
+                updateFilesList();
+            }
+        }
+
+        // 파일 열기
+        function openFile(file) {
+            currentFile = file;
+            document.getElementById('codeEditor').value = file.content || '';
+            updateTabs();
+            updateFilesList();
+            updateLineNumbers();
+        }
+
+        // 섹션 토글
+        function toggleSection(sectionName) {
+            sectionStates[sectionName] = !sectionStates[sectionName];
+            updateSections();
+        }
+
+        // 섹션 상태 업데이트
+        function updateSections() {
+            Object.keys(sectionStates).forEach(section => {
+                const toggle = document.getElementById(section + 'Toggle');
+                const list = document.getElementById(section + 'Files');
+                
+                if (sectionStates[section]) {
+                    toggle.classList.remove('collapsed');
+                    list.classList.remove('collapsed');
+                } else {
+                    toggle.classList.add('collapsed');
+                    list.classList.add('collapsed');
+                }
+            });
+        }
+
+        // 사이드바 토글
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+        }
+
+        // 탭 업데이트
+        function updateTabs() {
+            const tabsContainer = document.getElementById('editorTabs');
+            
+            if (currentFile) {
+                const icon = getFileIcon(currentFile.type);
+                tabsContainer.innerHTML = `
+                    <div class="editor-tab active">
+                        <span class="file-icon">${icon}</span>
+                        <span>${currentFile.name}</span>
+                        <button class="tab-close" onclick="closeCurrentFile()">×</button>
+                    </div>
+                `;
+            } else {
+                tabsContainer.innerHTML = `
+                    <div class="editor-tab active">
+                        <svg class="logo-icon" style="width: 14px; height: 14px;">
+                            <use href="#frc-logo"></use>
+                        </svg>
+                        <span>환영합니다</span>
+                    </div>
+                `;
+            }
+        }
+
+        // 현재 파일 닫기
+        function closeCurrentFile() {
+            currentFile = null;
+            document.getElementById('codeEditor').value = '';
+            updateTabs();
+            updateFilesList();
+            updateLineNumbers();
+        }
+
+        // 모달 표시
+        function showFileModal() {
+            document.getElementById('fileModal').classList.add('show');
+        }
+
+        function showShortcutModal() {
+            document.getElementById('shortcutModal').classList.add('show');
+        }
+
+        // 모달 닫기
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+        }
+
+        // 새 파일 생성
+        function createNewFile() {
+            const fileName = document.getElementById('fileName').value;
+            const fileType = document.getElementById('fileType').value;
+            
+            if (!fileName) return;
+            
+            const newFile = {
+                id: 'file_' + Date.now(),
+                name: fileName,
+                type: fileType,
+                content: getDefaultContent(fileType),
+                lastModified: new Date(),
+                category: 'recent',
+                favorite: false
+            };
+            
+            files.unshift(newFile);
+            openFile(newFile);
+            closeModal('fileModal');
+            updateFilesList();
+            
+            // 폼 초기화
+            document.getElementById('fileName').value = '';
+            document.getElementById('fileType').value = 'html';
+        }
+
+        // 기본 콘텐츠 반환
+        function getDefaultContent(type) {
+            const templates = {
+                'html': `<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Code Studio AI</title>
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+</html>`,
+                'css': `/* CSS 스타일 */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+}`,
+                'js': `// JavaScript 코드
+console.log("Hello, World!");`,
+                'py': `# Python 코드
+print("Hello, World!")`,
+                'java': `public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello, World!");
+    }
+}`,
+                'c': `#include <stdio.h>
+
+int main() {
+    printf("Hello, World!\\n");
+    return 0;
+}`,
+                'cpp': `#include <iostream>
+using namespace std;
+
+int main() {
+    cout << "Hello, World!" << endl;
+    return 0;
+}`,
+                'txt': ''
+            };
+            return templates[type] || '';
+        }
+
+        // 바로가기 생성
+        function createShortcut() {
+            const title = document.getElementById('shortcutTitle').value;
+            const url = document.getElementById('shortcutUrl').value;
+            const icon = document.getElementById('shortcutIcon').value || '🔗';
+            
+            if (!title || !url) return;
+            
+            shortcuts.push({ title, url, icon });
+            updateShortcuts();
+            closeModal('shortcutModal');
+            
+            // 폼 초기화
+            document.getElementById('shortcutTitle').value = '';
+            document.getElementById('shortcutUrl').value = '';
+            document.getElementById('shortcutIcon').value = '';
+        }
+
+        // 현재 파일 저장
+        function saveCurrentFile() {
+            if (currentFile) {
+                currentFile.content = document.getElementById('codeEditor').value;
+                currentFile.lastModified = new Date();
+                alert('파일이 저장되었습니다!');
+            } else {
+                alert('저장할 파일이 없습니다. 먼저 파일을 만들어주세요.');
+            }
+        }
+
+        // 자동 저장
+        function autoSave() {
+            if (currentFile) {
+                currentFile.content = document.getElementById('codeEditor').value;
+                currentFile.lastModified = new Date();
+            }
+        }
+
+        // 디바운스 함수
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // AI 패널 토글
+        function toggleAI() {
+            const aiPanel = document.getElementById('aiPanel');
+            aiPanel.classList.toggle('show');
+        }
+
+        // AI에게 메시지 전송
+        function sendToAI() {
+            const input = document.getElementById('aiInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // 사용자 메시지 추가
+            addAIMessage(message, 'user');
+            input.value = '';
+            
+            // AI 응답 시뮬레이션
+            setTimeout(() => {
+                const response = generateAIResponse(message);
+                addAIMessage(response, 'assistant');
+            }, 1000);
+        }
+
+        // AI 메시지 추가
+        function addAIMessage(message, sender) {
+            const messagesContainer = document.getElementById('aiMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `ai-message ${sender}`;
+            messageDiv.textContent = message;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // AI 응답 생성 (시뮬레이션)
+        function generateAIResponse(message) {
+            const responses = [
+                "코드를 분석해보니 몇 가지 개선점이 있습니다. 변수 이름을 더 명확하게 하고, 주석을 추가하면 좋겠습니다.",
+                "FRC 로봇 프로그래밍에서 이런 패턴은 매우 일반적입니다. WPILib 라이브러리를 활용하면 더 효율적으로 구현할 수 있습니다.",
+                "이 코드는 잘 작성되었네요! 성능을 더 향상시키려면 적절한 센서 입력값을 확인하고 PID 제어를 고려해보세요.",
+                "C++ 코드에서 메모리 관리에 주의하세요. 스마트 포인터를 사용하면 더 안전합니다.",
+                "Python에서는 리스트 컴프리헨션을 사용하여 코드를 더 간결하게 만들 수 있습니다.",
+                "Java 코드에서 Exception 처리를 추가하면 더 안정적인 프로그램이 됩니다."
+            ];
+            return responses[Math.floor(Math.random() * responses.length)];
+        }
+
+        // 코드 실행 (시뮬레이션)
+        function runCode() {
+            const code = document.getElementById('codeEditor').value;
+            const outputPanel = document.getElementById('outputPanel');
+            const outputContent = document.getElementById('outputContent');
+            
+            if (!code.trim()) {
+                alert('실행할 코드가 없습니다.');
+                return;
+            }
+            
+            outputPanel.classList.add('show');
+            outputContent.textContent = '코드 실행 중...\n';
+            
+            // 실행 시뮬레이션
+            setTimeout(() => {
+                if (currentFile && currentFile.type === 'py') {
+                    outputContent.textContent = 'Python 코드 실행 완료!\nHello, World!\n';
+                } else if (currentFile && (currentFile.type === 'c' || currentFile.type === 'cpp')) {
+                    outputContent.textContent = 'C/C++ 코드 컴파일 및 실행 완료!\nHello, World!\n';
+                } else if (currentFile && currentFile.type === 'java') {
+                    outputContent.textContent = 'Java 코드 컴파일 및 실행 완료!\nHello, World!\n';
+                } else {
+                    outputContent.textContent = '코드 실행 완료!\n출력: Hello, World!\n';
+                }
+            }, 1500);
+        }
+
+        // 출력 지우기
+        function clearOutput() {
+            const outputContent = document.getElementById('outputContent');
+            outputContent.textContent = '코드를 실행하면 결과가 여기에 표시됩니다.';
+            document.getElementById('outputPanel').classList.remove('show');
+        }
+
+        // 모달 외부 클릭 시 닫기
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('show');
+            }
+        });
+
+        // ESC 키로 모달 닫기
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const openModal = document.querySelector('.modal.show');
+                if (openModal) {
+                    openModal.classList.remove('show');
+                }
+            }
+        });
+    </script>
+</body>
+</html> <!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Studio AI - FRC Edition</title>
     <style>
         * {
             margin: 0;
@@ -13,17 +712,24 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-            background: #0f0f0f;
+            background: #0a0a0a;
             color: #ffffff;
             height: 100vh;
             overflow: hidden;
         }
 
+        /* 커스텀 로고 SVG */
+        .logo-icon {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+
         /* 상단 바로가기 바 */
         .top-shortcuts {
             height: 50px;
-            background: #1a1a1a;
-            border-bottom: 1px solid #333;
+            background: #0f0f0f;
+            border-bottom: 1px solid #1a1a1a;
             display: flex;
             align-items: center;
             padding: 0 20px;
@@ -38,66 +744,91 @@
 
         .shortcut-item {
             position: relative;
-            min-width: 32px;
-            height: 32px;
-            background: linear-gradient(135deg, #ff6b35 0%, #f59e0b 100%);
-            border-radius: 50%;
+            min-width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            border: 1px solid #333;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             transition: all 0.3s ease;
             text-decoration: none;
-            color: white;
-            font-size: 14px;
+            color: #808080;
+            font-size: 18px;
             font-weight: bold;
-            box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
         }
 
         .shortcut-item:hover {
-            transform: scale(1.1);
-            box-shadow: 0 4px 16px rgba(255, 107, 53, 0.4);
+            transform: translateY(-2px);
+            border-color: #4a4a4a;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
         }
 
         .shortcut-item .tooltip {
             position: absolute;
-            top: -30px;
+            top: -35px;
             left: 50%;
             transform: translateX(-50%);
-            background: #333;
+            background: #2d2d2d;
             color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: normal;
             white-space: nowrap;
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.2s;
             z-index: 1000;
+            border: 1px solid #3a3a3a;
         }
 
         .shortcut-item:hover .tooltip {
             opacity: 1;
         }
 
-        .add-shortcut {
-            min-width: 32px;
-            height: 32px;
-            border: 2px dashed #666;
+        .shortcut-delete {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 18px;
+            height: 18px;
+            background: #ff4444;
             border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: white;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .shortcut-item:hover .shortcut-delete {
+            display: flex;
+        }
+
+        .add-shortcut {
+            min-width: 36px;
+            height: 36px;
+            border: 2px dashed #3a3a3a;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             transition: all 0.3s ease;
-            color: #666;
-            font-size: 18px;
+            color: #4a4a4a;
+            font-size: 20px;
         }
 
         .add-shortcut:hover {
-            border-color: #ff6b35;
-            color: #ff6b35;
-            transform: scale(1.1);
+            border-color: #5a5a5a;
+            color: #808080;
+            transform: translateY(-2px);
         }
 
         .main-container {
@@ -108,8 +839,8 @@
         /* 왼쪽 사이드바 */
         .sidebar {
             width: 280px;
-            background: #1a1a1a;
-            border-right: 1px solid #333;
+            background: #0f0f0f;
+            border-right: 1px solid #1a1a1a;
             display: flex;
             flex-direction: column;
             transition: width 0.3s ease;
@@ -125,26 +856,26 @@
             align-items: center;
             justify-content: space-between;
             padding: 0 16px;
-            border-bottom: 1px solid #333;
+            border-bottom: 1px solid #1a1a1a;
         }
 
         .sidebar-title {
             font-size: 16px;
             font-weight: 700;
-            background: linear-gradient(135deg, #ff6b35, #8b5cf6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #808080;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .sidebar.collapsed .sidebar-title {
+        .sidebar.collapsed .sidebar-title span:not(.logo-container) {
             display: none;
         }
 
         .sidebar-toggle {
             background: none;
             border: none;
-            color: #888;
+            color: #4a4a4a;
             font-size: 16px;
             cursor: pointer;
             padding: 6px;
@@ -153,8 +884,8 @@
         }
 
         .sidebar-toggle:hover {
-            background: #333;
-            color: #fff;
+            background: #1a1a1a;
+            color: #808080;
         }
 
         .files-section {
@@ -176,38 +907,26 @@
         }
 
         .section-header:hover {
-            background: #2a2a2a;
+            background: #1a1a1a;
         }
 
         .section-title {
             font-size: 13px;
             font-weight: 600;
-            color: #ccc;
+            color: #808080;
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
         .section-toggle {
-            color: #888;
+            color: #4a4a4a;
             font-size: 12px;
             transition: transform 0.2s;
         }
 
         .section-toggle.collapsed {
             transform: rotate(-90deg);
-        }
-
-        .sidebar.collapsed .section-header {
-            justify-content: center;
-        }
-
-        .sidebar.collapsed .section-title span:not(.icon) {
-            display: none;
-        }
-
-        .sidebar.collapsed .section-toggle {
-            display: none;
         }
 
         .files-list {
@@ -230,21 +949,36 @@
             margin: 0 8px;
             border-radius: 6px;
             font-size: 13px;
+            position: relative;
+            color: #808080;
         }
 
         .file-item:hover {
-            background: #2a2a2a;
+            background: #1a1a1a;
+            color: #ffffff;
         }
 
         .file-item.active {
-            background: linear-gradient(135deg, #ff6b35, #8b5cf6);
+            background: #2d2d2d;
             color: white;
+            border: 1px solid #3a3a3a;
+        }
+
+        .file-item.favorite::before {
+            content: "★";
+            position: absolute;
+            left: 4px;
+            color: #ffcc00;
+            font-size: 10px;
         }
 
         .file-icon {
             font-size: 14px;
             width: 16px;
             text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .file-name {
@@ -254,19 +988,39 @@
             text-overflow: ellipsis;
         }
 
-        .sidebar.collapsed .file-item {
-            justify-content: center;
-            padding: 8px;
+        .file-actions {
+            display: none;
+            gap: 4px;
         }
 
-        .sidebar.collapsed .file-name {
-            display: none;
+        .file-item:hover .file-actions {
+            display: flex;
+        }
+
+        .file-action-btn {
+            background: none;
+            border: none;
+            color: #4a4a4a;
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .file-action-btn:hover {
+            background: #2d2d2d;
+            color: #808080;
+        }
+
+        .file-action-btn.delete:hover {
+            color: #ff4444;
         }
 
         .new-file-btn {
-            background: linear-gradient(135deg, #8b5cf6, #6366f1);
-            border: none;
-            color: white;
+            background: #1a1a1a;
+            border: 1px solid #2d2d2d;
+            color: #808080;
             padding: 10px;
             margin: 8px;
             border-radius: 6px;
@@ -281,12 +1035,9 @@
         }
 
         .new-file-btn:hover {
+            background: #2d2d2d;
+            color: #ffffff;
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
-        }
-
-        .sidebar.collapsed .new-file-btn span:not(.icon) {
-            display: none;
         }
 
         /* 메인 에디터 영역 */
@@ -294,13 +1045,13 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            background: #0f0f0f;
+            background: #0a0a0a;
         }
 
         .editor-header {
             height: 50px;
-            background: #1a1a1a;
-            border-bottom: 1px solid #333;
+            background: #0f0f0f;
+            border-bottom: 1px solid #1a1a1a;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -315,7 +1066,7 @@
 
         .editor-tab {
             padding: 8px 12px;
-            background: #2a2a2a;
+            background: #1a1a1a;
             border-radius: 6px 6px 0 0;
             cursor: pointer;
             transition: all 0.2s;
@@ -324,15 +1075,20 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            color: #808080;
+            border: 1px solid transparent;
         }
 
         .editor-tab.active {
-            background: linear-gradient(135deg, #8b5cf6, #6366f1);
+            background: #0a0a0a;
             color: white;
+            border: 1px solid #1a1a1a;
+            border-bottom: none;
         }
 
         .editor-tab:not(.active):hover {
-            background: #333;
+            background: #2d2d2d;
+            color: #ffffff;
         }
 
         .tab-close {
@@ -359,7 +1115,7 @@
 
         .action-btn {
             padding: 6px 12px;
-            border: none;
+            border: 1px solid #2d2d2d;
             border-radius: 5px;
             font-size: 12px;
             font-weight: 500;
@@ -368,46 +1124,53 @@
             display: flex;
             align-items: center;
             gap: 4px;
+            background: #1a1a1a;
+            color: #808080;
+        }
+
+        .action-btn:hover {
+            background: #2d2d2d;
+            color: #ffffff;
+            transform: translateY(-1px);
         }
 
         .btn-run {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
+            border-color: #2a4a2a;
+            color: #4a8a4a;
         }
 
         .btn-run:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 3px 8px rgba(16, 185, 129, 0.3);
-        }
-
-        .btn-ai {
-            background: linear-gradient(135deg, #ff6b35, #f59e0b);
-            color: white;
-        }
-
-        .btn-ai:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 3px 8px rgba(255, 107, 53, 0.3);
-        }
-
-        .btn-save {
-            background: #333;
-            color: #fff;
-            border: 1px solid #555;
-        }
-
-        .btn-save:hover {
-            background: #404040;
+            background: #1a2a1a;
+            color: #6aca6a;
         }
 
         .editor-main {
             flex: 1;
             display: flex;
+            position: relative;
+        }
+
+        .line-numbers {
+            width: 50px;
+            background: #0a0a0a;
+            border-right: 1px solid #1a1a1a;
+            padding: 20px 0;
+            text-align: right;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #3a3a3a;
+            user-select: none;
+            overflow: hidden;
+        }
+
+        .line-number {
+            padding-right: 10px;
         }
 
         .code-editor {
             flex: 1;
-            background: #0f0f0f;
+            background: #0a0a0a;
             border: none;
             color: #ffffff;
             font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
@@ -416,18 +1179,18 @@
             padding: 20px;
             resize: none;
             outline: none;
-            tab-size: 2;
+            tab-size: 4;
         }
 
         .code-editor::placeholder {
-            color: #666;
+            color: #3a3a3a;
         }
 
         /* AI 어시스턴트 패널 */
         .ai-panel {
             width: 350px;
-            background: #1a1a1a;
-            border-left: 1px solid #333;
+            background: #0f0f0f;
+            border-left: 1px solid #1a1a1a;
             display: none;
             flex-direction: column;
         }
@@ -442,23 +1205,23 @@
             align-items: center;
             justify-content: space-between;
             padding: 0 16px;
-            background: #2a2a2a;
-            border-bottom: 1px solid #333;
+            background: #1a1a1a;
+            border-bottom: 1px solid #2d2d2d;
         }
 
         .ai-title {
             font-size: 14px;
             font-weight: 600;
-            background: linear-gradient(135deg, #ff6b35, #8b5cf6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #808080;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .ai-close {
             background: none;
             border: none;
-            color: #888;
+            color: #4a4a4a;
             font-size: 18px;
             cursor: pointer;
             padding: 4px;
@@ -466,8 +1229,8 @@
         }
 
         .ai-close:hover {
-            background: #333;
-            color: #fff;
+            background: #2d2d2d;
+            color: #808080;
         }
 
         .ai-content {
@@ -495,28 +1258,32 @@
         }
 
         .ai-message.user {
-            background: linear-gradient(135deg, #8b5cf6, #6366f1);
+            background: #2d2d2d;
             color: white;
             align-self: flex-end;
+            border: 1px solid #3a3a3a;
         }
 
         .ai-message.assistant {
-            background: #2a2a2a;
+            background: #1a1a1a;
             align-self: flex-start;
-            border: 1px solid #333;
+            border: 1px solid #2d2d2d;
+            color: #b0b0b0;
         }
 
         .ai-input-area {
             padding: 16px;
-            border-top: 1px solid #333;
+            border-top: 1px solid #2d2d2d;
+            position: relative;
         }
 
         .ai-input {
             width: 100%;
-            background: #0f0f0f;
-            border: 1px solid #333;
+            background: #0a0a0a;
+            border: 1px solid #2d2d2d;
             border-radius: 8px;
             padding: 12px;
+            padding-right: 40px;
             color: white;
             font-size: 13px;
             resize: none;
@@ -526,20 +1293,19 @@
         }
 
         .ai-input:focus {
-            border-color: #8b5cf6;
-            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+            border-color: #3a3a3a;
         }
 
         .ai-send {
             position: absolute;
             right: 24px;
             bottom: 24px;
-            width: 32px;
-            height: 32px;
-            background: linear-gradient(135deg, #8b5cf6, #6366f1);
-            border: none;
-            border-radius: 50%;
-            color: white;
+            width: 28px;
+            height: 28px;
+            background: #2d2d2d;
+            border: 1px solid #3a3a3a;
+            border-radius: 6px;
+            color: #808080;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -549,19 +1315,15 @@
         }
 
         .ai-send:hover {
-            transform: scale(1.1);
-        }
-
-        .ai-send:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+            background: #3a3a3a;
+            color: #ffffff;
         }
 
         /* 실행 결과 패널 */
         .output-panel {
             height: 200px;
-            background: #1a1a1a;
-            border-top: 1px solid #333;
+            background: #0f0f0f;
+            border-top: 1px solid #1a1a1a;
             display: none;
             flex-direction: column;
         }
@@ -576,10 +1338,11 @@
             align-items: center;
             justify-content: space-between;
             padding: 0 16px;
-            background: #2a2a2a;
-            border-bottom: 1px solid #333;
+            background: #1a1a1a;
+            border-bottom: 1px solid #2d2d2d;
             font-size: 13px;
             font-weight: 600;
+            color: #808080;
         }
 
         .output-content {
@@ -590,13 +1353,13 @@
             font-size: 13px;
             line-height: 1.5;
             white-space: pre-wrap;
-            color: #ccc;
+            color: #b0b0b0;
         }
 
         .output-clear {
             background: none;
             border: none;
-            color: #888;
+            color: #4a4a4a;
             cursor: pointer;
             font-size: 12px;
             padding: 4px 8px;
@@ -604,8 +1367,8 @@
         }
 
         .output-clear:hover {
-            background: #333;
-            color: #fff;
+            background: #2d2d2d;
+            color: #808080;
         }
 
         /* 모달 */
@@ -616,7 +1379,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.9);
             z-index: 2000;
             align-items: center;
             justify-content: center;
@@ -627,8 +1390,8 @@
         }
 
         .modal-content {
-            background: #1a1a1a;
-            border: 1px solid #333;
+            background: #0f0f0f;
+            border: 1px solid #2d2d2d;
             border-radius: 12px;
             padding: 24px;
             max-width: 500px;
@@ -647,19 +1410,20 @@
         .modal-title {
             font-size: 18px;
             font-weight: 600;
+            color: #808080;
         }
 
         .modal-close {
             background: none;
             border: none;
-            color: #888;
+            color: #4a4a4a;
             font-size: 24px;
             cursor: pointer;
             padding: 4px;
         }
 
         .modal-close:hover {
-            color: #fff;
+            color: #808080;
         }
 
         .form-group {
@@ -671,13 +1435,14 @@
             margin-bottom: 8px;
             font-weight: 500;
             font-size: 14px;
+            color: #808080;
         }
 
         .form-input {
             width: 100%;
             padding: 12px;
-            background: #0f0f0f;
-            border: 1px solid #333;
+            background: #0a0a0a;
+            border: 1px solid #2d2d2d;
             border-radius: 6px;
             color: white;
             font-size: 14px;
@@ -685,8 +1450,7 @@
 
         .form-input:focus {
             outline: none;
-            border-color: #8b5cf6;
-            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+            border-color: #3a3a3a;
         }
 
         .form-actions {
@@ -698,104 +1462,73 @@
 
         .modal-btn {
             padding: 10px 16px;
-            border: none;
+            border: 1px solid #2d2d2d;
             border-radius: 6px;
             font-size: 14px;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s;
+            background: #1a1a1a;
+            color: #808080;
+        }
+
+        .modal-btn:hover {
+            background: #2d2d2d;
+            color: #ffffff;
         }
 
         .modal-btn.primary {
-            background: linear-gradient(135deg, #8b5cf6, #6366f1);
-            color: white;
-        }
-
-        .modal-btn.primary:hover {
-            transform: translateY(-1px);
-        }
-
-        .modal-btn.secondary {
-            background: #333;
-            color: white;
-            border: 1px solid #555;
-        }
-
-        .modal-btn.secondary:hover {
-            background: #404040;
-        }
-
-        /* 반응형 */
-        @media (max-width: 1024px) {
-            .ai-panel {
-                width: 100%;
-                position: absolute;
-                top: 0;
-                right: 0;
-                z-index: 100;
-            }
-            
-            .sidebar {
-                width: 60px;
-            }
-            
-            .sidebar-title,
-            .section-title span:not(.icon),
-            .file-name,
-            .new-file-btn span:not(.icon) {
-                display: none;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .top-shortcuts {
-                padding: 0 8px;
-            }
-            
-            .shortcut-item {
-                min-width: 28px;
-                height: 28px;
-                font-size: 12px;
-            }
-            
-            .editor-header {
-                padding: 0 8px;
-            }
-            
-            .code-editor {
-                padding: 12px;
-                font-size: 13px;
-            }
+            background: #2d2d2d;
+            color: #ffffff;
         }
 
         /* 스크롤바 스타일 */
-        .files-section::-webkit-scrollbar,
-        .ai-messages::-webkit-scrollbar,
-        .output-content::-webkit-scrollbar {
-            width: 6px;
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
         }
 
-        .files-section::-webkit-scrollbar-track,
-        .ai-messages::-webkit-scrollbar-track,
-        .output-content::-webkit-scrollbar-track {
-            background: #1a1a1a;
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
         }
 
-        .files-section::-webkit-scrollbar-thumb,
-        .ai-messages::-webkit-scrollbar-thumb,
-        .output-content::-webkit-scrollbar-thumb {
-            background: #444;
-            border-radius: 3px;
+        ::-webkit-scrollbar-thumb {
+            background: #2d2d2d;
+            border-radius: 4px;
         }
 
-        .files-section::-webkit-scrollbar-thumb:hover,
-        .ai-messages::-webkit-scrollbar-thumb:hover,
-        .output-content::-webkit-scrollbar-thumb:hover {
-            background: #666;
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3a3a3a;
+        }
+
+        /* 로고 컨테이너 */
+        .logo-container {
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
     </style>
 </head>
 <body>
+    <!-- FRC 로봇 로고 SVG 정의 -->
+    <svg style="display: none;">
+        <symbol id="frc-logo" viewBox="0 0 24 24">
+            <!-- 로봇 기어와 회로 패턴을 결합한 디자인 -->
+            <g fill="currentColor">
+                <!-- 중앙 기어 -->
+                <path d="M12 2L14 4V6L16 6L18 4L20 6L18 8H16V10H18L20 8L22 10L20 12L22 14L20 16L18 14V16H16L16 18L18 20L16 22L14 20V18H10V20L8 22L6 20L8 18V16H6V14L4 16L2 14L4 12L2 10L4 8L6 10V8H8V6L6 6L4 8L2 6L4 4L6 6H8V4L10 2H12Z"/>
+                <!-- 중앙 원 (프로세서) -->
+                <circle cx="12" cy="12" r="3" fill="#0a0a0a"/>
+                <circle cx="12" cy="12" r="2" fill="currentColor"/>
+            </g>
+        </symbol>
+        <symbol id="file-icon" viewBox="0 0 16 16">
+            <path fill="currentColor" d="M4 0h8l4 4v12H0V0h4zm7 1H5v14h10V5h-4V1zm1 0v3h3l-3-3z"/>
+        </symbol>
+    </svg>
+
     <!-- 상단 바로가기 바 -->
     <div class="top-shortcuts" id="topShortcuts">
         <div class="add-shortcut" onclick="showShortcutModal()" title="새 바로가기 추가">
@@ -807,21 +1540,35 @@
         <!-- 왼쪽 사이드바 -->
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <div class="sidebar-title">Code Studio</div>
+                <div class="sidebar-title">
+                    <span class="logo-container">
+                        <svg class="logo-icon" style="width: 20px; height: 20px;">
+                            <use href="#frc-logo"></use>
+                        </svg>
+                    </span>
+                    <span>Code Studio</span>
+                </div>
                 <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
             </div>
             
             <div class="files-section">
+                <div class="section-header" onclick="toggleSection('favorites')">
+                    <div class="section-title">
+                        <span class="icon">★</span>
+                        <span>즐겨찾기</span>
+                    </div>
+                    <div class="section-toggle" id="favoritesToggle">▼</div>
+                </div>
+                <ul class="files-list" id="favoriteFiles"></ul>
+
                 <div class="section-header" onclick="toggleSection('recent')">
                     <div class="section-title">
-                        <span class="icon">🕒</span>
+                        <span class="icon">⏱</span>
                         <span>최근 파일</span>
                     </div>
                     <div class="section-toggle" id="recentToggle">▼</div>
                 </div>
-                <ul class="files-list" id="recentFiles">
-                    <!-- 최근 파일들이 여기에 동적으로 추가됩니다 -->
-                </ul>
+                <ul class="files-list" id="recentFiles"></ul>
 
                 <div class="section-header" onclick="toggleSection('projects')">
                     <div class="section-title">
@@ -830,9 +1577,7 @@
                     </div>
                     <div class="section-toggle" id="projectsToggle">▼</div>
                 </div>
-                <ul class="files-list" id="projectFiles">
-                    <!-- 프로젝트 파일들이 여기에 동적으로 추가됩니다 -->
-                </ul>
+                <ul class="files-list" id="projectFiles"></ul>
             </div>
 
             <button class="new-file-btn" onclick="showFileModal()">
@@ -846,7 +1591,9 @@
             <div class="editor-header">
                 <div class="editor-tabs" id="editorTabs">
                     <div class="editor-tab active">
-                        <span class="file-icon">🌟</span>
+                        <svg class="logo-icon" style="width: 14px; height: 14px;">
+                            <use href="#frc-logo"></use>
+                        </svg>
                         <span>환영합니다</span>
                     </div>
                 </div>
@@ -855,7 +1602,10 @@
                         ▶ 실행
                     </button>
                     <button class="action-btn btn-ai" onclick="toggleAI()">
-                        🤖 AI 도움
+                        <svg class="logo-icon" style="width: 14px; height: 14px;">
+                            <use href="#frc-logo"></use>
+                        </svg>
+                        AI 도움
                     </button>
                     <button class="action-btn btn-save" onclick="saveCurrentFile()">
                         💾 저장
@@ -864,49 +1614,45 @@
             </div>
 
             <div class="editor-main">
+                <div class="line-numbers" id="lineNumbers">
+                    <div class="line-number">1</div>
+                </div>
                 <textarea class="code-editor" id="codeEditor" placeholder="여기에 코드를 작성하세요...
 
-// JavaScript 예시:
-console.log('안녕하세요! 코딩을 시작해보세요.');
-
-// HTML 예시:
-<!DOCTYPE html>
-<html>
-<head>
-    <title>내 첫 번째 페이지</title>
-</head>
-<body>
-    <h1>안녕하세요!</h1>
-    <p>이것은 제 첫 번째 웹페이지입니다.</p>
-</body>
-</html>
-
-단축키:
-Ctrl+Enter: 코드 실행
-Ctrl+S: 파일 저장
-Ctrl+N: 새 파일"></textarea>
+// 단축키:
+// Tab: 들여쓰기
+// Shift+Tab: 내어쓰기
+// Ctrl+Enter: 코드 실행
+// Ctrl+S: 파일 저장
+// Ctrl+N: 새 파일
+// { 입력 시 자동으로 } 완성"></textarea>
 
                 <!-- AI 어시스턴트 패널 -->
                 <div class="ai-panel" id="aiPanel">
                     <div class="ai-header">
-                        <div class="ai-title">🤖 AI 코드 어시스턴트</div>
+                        <div class="ai-title">
+                            <svg class="logo-icon" style="width: 16px; height: 16px;">
+                                <use href="#frc-logo"></use>
+                            </svg>
+                            AI 코드 어시스턴트
+                        </div>
                         <button class="ai-close" onclick="toggleAI()">×</button>
                     </div>
                     <div class="ai-content">
                         <div class="ai-messages" id="aiMessages">
                             <div class="ai-message assistant">
-                                안녕하세요! 저는 여러분의 코딩을 도와드리는 AI 어시스턴트입니다. 🚀
+                                안녕하세요! FRC 로봇 프로그래밍과 코딩을 도와드리는 AI 어시스턴트입니다.
                                 
                                 다음과 같은 도움을 드릴 수 있습니다:
                                 • 코드 분석 및 개선 제안
                                 • 버그 찾기 및 수정 방법
                                 • 코드 최적화 팁
-                                • 프로그래밍 질문 답변
+                                • FRC 로봇 프로그래밍 관련 질문
                                 
                                 코드를 붙여넣거나 질문을 입력해보세요!
                             </div>
                         </div>
-                        <div class="ai-input-area" style="position: relative;">
+                        <div class="ai-input-area">
                             <textarea class="ai-input" id="aiInput" placeholder="코드나 질문을 입력하세요..." rows="3"></textarea>
                             <button class="ai-send" onclick="sendToAI()" id="aiSendBtn">▲</button>
                         </div>
@@ -914,658 +1660,4 @@ Ctrl+N: 새 파일"></textarea>
                 </div>
             </div>
 
-            <!-- 실행 결과 패널 -->
-            <div class="output-panel" id="outputPanel">
-                <div class="output-header">
-                    <span>실행 결과</span>
-                    <button class="output-clear" onclick="clearOutput()">지우기</button>
-                </div>
-                <div class="output-content" id="outputContent">
-                    코드를 실행하면 결과가 여기에 표시됩니다.
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 새 파일 모달 -->
-    <div class="modal" id="fileModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">새 파일 생성</h3>
-                <button class="modal-close" onclick="closeModal('fileModal')">×</button>
-            </div>
-            <form onsubmit="createNewFile(event)">
-                <div class="form-group">
-                    <label class="form-label">파일 이름</label>
-                    <input type="text" class="form-input" id="fileName" placeholder="예: index.html" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">파일 타입</label>
-                    <select class="form-input" id="fileType">
-                        <option value="html">HTML</option>
-                        <option value="css">CSS</option>
-                        <option value="js">JavaScript</option>
-                        <option value="py">Python</option>
-                        <option value="txt">텍스트</option>
-                    </select>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="modal-btn secondary" onclick="closeModal('fileModal')">취소</button>
-                    <button type="submit" class="modal-btn primary">생성</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- 바로가기 모달 -->
-    <div class="modal" id="shortcutModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">바로가기 추가</h3>
-                <button class="modal-close" onclick="closeModal('shortcutModal')">×</button>
-            </div>
-            <form onsubmit="createShortcut(event)">
-                <div class="form-group">
-                    <label class="form-label">제목</label>
-                    <input type="text" class="form-input" id="shortcutTitle" placeholder="예: GitHub" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">URL</label>
-                    <input type="url" class="form-input" id="shortcutUrl" placeholder="https://github.com" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">아이콘 (이모지)</label>
-                    <input type="text" class="form-input" id="shortcutIcon" placeholder="🌐" maxlength="2">
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="modal-btn secondary" onclick="closeModal('shortcutModal')">취소</button>
-                    <button type="submit" class="modal-btn primary">추가</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        // 전역 변수
-        let currentFile = null;
-        let files = [];
-        let shortcuts = [];
-        let aiMessages = [];
-        let sectionStates = {
-            recent: true,
-            projects: true
-        };
-
-        // 초기화
-        document.addEventListener('DOMContentLoaded', function() {
-            loadSavedData();
-            setupEventListeners();
-            addDefaultShortcuts();
-            addDefaultFiles();
-            updateUI();
-        });
-
-        // 저장된 데이터 로드
-        function loadSavedData() {
-            const savedFiles = localStorage.getItem('codeStudioFiles');
-            const savedShortcuts = localStorage.getItem('codeStudioShortcuts');
-            const savedSections = localStorage.getItem('codeStudioSections');
-
-            if (savedFiles) {
-                files = JSON.parse(savedFiles);
-            }
-            if (savedShortcuts) {
-                shortcuts = JSON.parse(savedShortcuts);
-            }
-            if (savedSections) {
-                sectionStates = JSON.parse(savedSections);
-            }
-        }
-
-        // 데이터 저장
-        function saveData() {
-            localStorage.setItem('codeStudioFiles', JSON.stringify(files));
-            localStorage.setItem('codeStudioShortcuts', JSON.stringify(shortcuts));
-            localStorage.setItem('codeStudioSections', JSON.stringify(sectionStates));
-        }
-
-        // 이벤트 리스너 설정
-        function setupEventListeners() {
-            // 키보드 단축키
-            document.addEventListener('keydown', function(e) {
-                if (e.ctrlKey || e.metaKey) {
-                    switch(e.key) {
-                        case 'Enter':
-                            e.preventDefault();
-                            runCode();
-                            break;
-                        case 's':
-                            e.preventDefault();
-                            saveCurrentFile();
-                            break;
-                        case 'n':
-                            e.preventDefault();
-                            showFileModal();
-                            break;
-                    }
-                }
-            });
-
-            // AI 입력 Enter 키
-            document.getElementById('aiInput').addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendToAI();
-                }
-            });
-
-            // 코드 에디터 자동 저장
-            document.getElementById('codeEditor').addEventListener('input', debounce(autoSave, 2000));
-        }
-
-        // 기본 바로가기 추가
-        function addDefaultShortcuts() {
-            if (shortcuts.length === 0) {
-                shortcuts = [
-                    { title: 'GitHub', url: 'https://github.com', icon: '🐱' },
-                    { title: 'Stack Overflow', url: 'https://stackoverflow.com', icon: '📚' },
-                    { title: 'MDN', url: 'https://developer.mozilla.org', icon: '🌐' },
-                    { title: 'CodePen', url: 'https://codepen.io', icon: '✨' }
-                ];
-                saveData();
-            }
-        }
-
-        // 기본 파일 추가
-        function addDefaultFiles() {
-            if (files.length === 0) {
-                files = [
-                    {
-                        id: 'welcome',
-                        name: '환영합니다.md',
-                        type: 'md',
-                        content: `# Code Studio AI에 오신 것을 환영합니다! 🎉
-
-이것은 당신의 개인 코딩 스튜디오입니다.
-
-## 주요 기능
-
-- 🖥️ **다중 언어 지원**: HTML, CSS, JavaScript, Python 등
-- 🤖 **AI 어시스턴트**: 코드 분석, 버그 찾기, 최적화 제안
-- 📁 **파일 관리**: 프로젝트와 파일을 체계적으로 관리
-- 🔗 **바로가기**: 자주 사용하는 사이트에 빠른 접근
-- ▶️ **실시간 실행**: 코드를 바로 실행하고 결과 확인
-
-## 시작하기
-
-1. 왼쪽 사이드바에서 "새 파일" 버튼을 클릭
-2. 코드를 작성하고 Ctrl+Enter로 실행
-3. AI 어시스턴트에게 도움 요청
-4. 상단 바로가기로 필요한 사이트에 빠른 접근
-
-즐거운 코딩 되세요! 🚀`,
-                        lastModified: new Date(),
-                        category: 'recent'
-                    },
-                    {
-                        id: 'sample-js',
-                        name: 'sample.js',
-                        type: 'js',
-                        content: `// JavaScript 샘플 코드
-console.log('Hello, Code Studio AI!');
-
-// 간단한 함수 예제
-function greetUser(name) {
-    return \`안녕하세요, \${name}님! 🎉\`;
-}
-
-// 함수 실행
-const message = greetUser('개발자');
-console.log(message);
-
-// 배열과 반복문
-const languages = ['JavaScript', 'Python', 'HTML', 'CSS'];
-console.log('지원하는 언어들:');
-languages.forEach((lang, index) => {
-    console.log(\`\${index + 1}. \${lang}\`);
-});`,
-                        lastModified: new Date(),
-                        category: 'projects'
-                    }
-                ];
-                saveData();
-            }
-        }
-
-        // UI 업데이트
-        function updateUI() {
-            updateShortcuts();
-            updateFilesList();
-            updateSections();
-        }
-
-        // 바로가기 업데이트
-        function updateShortcuts() {
-            const container = document.getElementById('topShortcuts');
-            const addBtn = container.querySelector('.add-shortcut');
-            
-            // 기존 바로가기 제거 (add 버튼 제외)
-            const existingShortcuts = container.querySelectorAll('.shortcut-item');
-            existingShortcuts.forEach(item => item.remove());
-
-            // 바로가기 추가
-            shortcuts.forEach(shortcut => {
-                const item = document.createElement('a');
-                item.className = 'shortcut-item';
-                item.href = shortcut.url;
-                item.target = '_blank';
-                item.rel = 'noopener noreferrer';
-                item.innerHTML = `
-                    ${shortcut.icon || '🌐'}
-                    <div class="tooltip">${shortcut.title}</div>
-                `;
-                container.insertBefore(item, addBtn);
-            });
-        }
-
-        // 파일 목록 업데이트
-        function updateFilesList() {
-            const recentFiles = document.getElementById('recentFiles');
-            const projectFiles = document.getElementById('projectFiles');
-
-            recentFiles.innerHTML = '';
-            projectFiles.innerHTML = '';
-
-            files.forEach(file => {
-                const item = document.createElement('li');
-                item.className = 'file-item';
-                if (currentFile && currentFile.id === file.id) {
-                    item.classList.add('active');
-                }
-                
-                const icon = getFileIcon(file.type);
-                item.innerHTML = `
-                    <span class="file-icon">${icon}</span>
-                    <span class="file-name">${file.name}</span>
-                `;
-                
-                item.onclick = () => openFile(file);
-                
-                if (file.category === 'recent') {
-                    recentFiles.appendChild(item);
-                } else {
-                    projectFiles.appendChild(item);
-                }
-            });
-        }
-
-        // 섹션 상태 업데이트
-        function updateSections() {
-            Object.keys(sectionStates).forEach(section => {
-                const toggle = document.getElementById(section + 'Toggle');
-                const list = document.getElementById(section + 'Files');
-                
-                if (sectionStates[section]) {
-                    toggle.textContent = '▼';
-                    toggle.classList.remove('collapsed');
-                    list.classList.remove('collapsed');
-                } else {
-                    toggle.textContent = '▶';
-                    toggle.classList.add('collapsed');
-                    list.classList.add('collapsed');
-                }
-            });
-        }
-
-        // 파일 아이콘 가져오기
-        function getFileIcon(type) {
-            const icons = {
-                'js': '📜',
-                'html': '🌐',
-                'css': '🎨',
-                'py': '🐍',
-                'md': '📝',
-                'txt': '📄',
-                'json': '📋'
-            };
-            return icons[type] || '📄';
-        }
-
-        // 사이드바 토글
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('collapsed');
-        }
-
-        // 섹션 토글
-        function toggleSection(sectionName) {
-            sectionStates[sectionName] = !sectionStates[sectionName];
-            updateSections();
-            saveData();
-        }
-
-        // AI 패널 토글
-        function toggleAI() {
-            const aiPanel = document.getElementById('aiPanel');
-            aiPanel.classList.toggle('show');
-        }
-
-        // 파일 모달 표시
-        function showFileModal() {
-            const modal = document.getElementById('fileModal');
-            modal.classList.add('show');
-            document.getElementById('fileName').focus();
-        }
-
-        // 바로가기 모달 표시
-        function showShortcutModal() {
-            const modal = document.getElementById('shortcutModal');
-            modal.classList.add('show');
-            document.getElementById('shortcutTitle').focus();
-        }
-
-        // 모달 닫기
-        function closeModal(modalId) {
-            const modal = document.getElementById(modalId);
-            modal.classList.remove('show');
-            
-            // 폼 초기화
-            const form = modal.querySelector('form');
-            if (form) form.reset();
-        }
-
-        // 새 파일 생성
-        function createNewFile(event) {
-            event.preventDefault();
-            
-            const fileName = document.getElementById('fileName').value.trim();
-            const fileType = document.getElementById('fileType').value;
-            
-            if (!fileName) return;
-
-            const newFile = {
-                id: 'file_' + Date.now(),
-                name: fileName.includes('.') ? fileName : `${fileName}.${fileType}`,
-                type: fileType,
-                content: getDefaultContent(fileType),
-                lastModified: new Date(),
-                category: 'projects'
-            };
-
-            files.push(newFile);
-            saveData();
-            updateFilesList();
-            openFile(newFile);
-            closeModal('fileModal');
-        }
-
-        // 바로가기 생성
-        function createShortcut(event) {
-            event.preventDefault();
-            
-            const title = document.getElementById('shortcutTitle').value.trim();
-            const url = document.getElementById('shortcutUrl').value.trim();
-            const icon = document.getElementById('shortcutIcon').value.trim();
-            
-            if (!title || !url) return;
-
-            shortcuts.push({
-                title,
-                url,
-                icon: icon || '🌐'
-            });
-
-            saveData();
-            updateShortcuts();
-            closeModal('shortcutModal');
-        }
-
-        // 기본 파일 내용
-        function getDefaultContent(type) {
-            const templates = {
-                'html': `<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>새 페이지</title>
-</head>
-<body>
-    <h1>안녕하세요!</h1>
-    <p>새로운 HTML 페이지입니다.</p>
-</body>
-</html>`,
-                'css': `/* CSS 스타일 */
-body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 20px;
-    background-color: #f5f5f5;
-}
-
-h1 {
-    color: #333;
-    text-align: center;
-}`,
-                'js': `// JavaScript 코드
-console.log('새 JavaScript 파일입니다!');
-
-function sayHello(name) {
-    return \`안녕하세요, \${name}님!\`;
-}
-
-// 함수 실행
-console.log(sayHello('개발자'));`,
-                'py': `# Python 코드
-print("새 Python 파일입니다!")
-
-def say_hello(name):
-    return f"안녕하세요, {name}님!"
-
-# 함수 실행
-print(say_hello("개발자"))`,
-                'txt': '새 텍스트 파일입니다.\n여기에 내용을 작성하세요.'
-            };
-            return templates[type] || '';
-        }
-
-        // 파일 열기
-        function openFile(file) {
-            currentFile = file;
-            document.getElementById('codeEditor').value = file.content;
-            updateFilesList();
-            updateEditorTab(file);
-        }
-
-        // 에디터 탭 업데이트
-        function updateEditorTab(file) {
-            const tabsContainer = document.getElementById('editorTabs');
-            tabsContainer.innerHTML = `
-                <div class="editor-tab active">
-                    <span class="file-icon">${getFileIcon(file.type)}</span>
-                    <span>${file.name}</span>
-                    <button class="tab-close" onclick="closeTab(event)">×</button>
-                </div>
-            `;
-        }
-
-        // 탭 닫기
-        function closeTab(event) {
-            event.stopPropagation();
-            currentFile = null;
-            document.getElementById('codeEditor').value = '';
-            document.getElementById('editorTabs').innerHTML = `
-                <div class="editor-tab active">
-                    <span class="file-icon">🌟</span>
-                    <span>환영합니다</span>
-                </div>
-            `;
-            updateFilesList();
-        }
-
-        // 파일 저장
-        function saveCurrentFile() {
-            if (!currentFile) {
-                alert('저장할 파일을 선택해주세요.');
-                return;
-            }
-
-            const content = document.getElementById('codeEditor').value;
-            const fileIndex = files.findIndex(f => f.id === currentFile.id);
-            
-            if (fileIndex !== -1) {
-                files[fileIndex].content = content;
-                files[fileIndex].lastModified = new Date();
-                saveData();
-                
-                // 성공 표시
-                const saveBtn = document.querySelector('.btn-save');
-                const originalText = saveBtn.innerHTML;
-                saveBtn.innerHTML = '✓ 저장됨';
-                saveBtn.style.background = '#10b981';
-                
-                setTimeout(() => {
-                    saveBtn.innerHTML = originalText;
-                    saveBtn.style.background = '#333';
-                }, 2000);
-            }
-        }
-
-        // 자동 저장
-        function autoSave() {
-            if (currentFile) {
-                const content = document.getElementById('codeEditor').value;
-                const fileIndex = files.findIndex(f => f.id === currentFile.id);
-                
-                if (fileIndex !== -1) {
-                    files[fileIndex].content = content;
-                    files[fileIndex].lastModified = new Date();
-                    saveData();
-                }
-            }
-        }
-
-        // 코드 실행
-        function runCode() {
-            const code = document.getElementById('codeEditor').value;
-            const outputPanel = document.getElementById('outputPanel');
-            const outputContent = document.getElementById('outputContent');
-            
-            if (!code.trim()) {
-                alert('실행할 코드를 입력해주세요.');
-                return;
-            }
-
-            outputPanel.classList.add('show');
-            outputContent.textContent = '코드를 실행 중입니다...\n';
-
-            try {
-                if (currentFile && currentFile.type === 'js') {
-                    // JavaScript 실행 (안전하게)
-                    const originalConsoleLog = console.log;
-                    let output = '';
-                    
-                    console.log = (...args) => {
-                        output += args.join(' ') + '\n';
-                    };
-
-                    eval(code);
-                    console.log = originalConsoleLog;
-                    
-                    outputContent.textContent = output || '실행 완료 (출력 없음)';
-                } else if (currentFile && currentFile.type === 'html') {
-                    // HTML 미리보기
-                    const newWindow = window.open('', '_blank');
-                    newWindow.document.write(code);
-                    newWindow.document.close();
-                    outputContent.textContent = '새 창에서 HTML이 열렸습니다.';
-                } else {
-                    outputContent.textContent = `${currentFile?.type?.toUpperCase() || '알 수 없는'} 파일 실행은 지원되지 않습니다.\n현재 JavaScript와 HTML만 지원됩니다.`;
-                }
-            } catch (error) {
-                outputContent.textContent = `오류 발생:\n${error.message}`;
-            }
-        }
-
-        // 출력 지우기
-        function clearOutput() {
-            document.getElementById('outputContent').textContent = '코드를 실행하면 결과가 여기에 표시됩니다.';
-        }
-
-        // AI에게 메시지 보내기
-        function sendToAI() {
-            const input = document.getElementById('aiInput');
-            const message = input.value.trim();
-            
-            if (!message) return;
-
-            addAIMessage('user', message);
-            input.value = '';
-            
-            // AI 응답 시뮬레이션
-            setTimeout(() => {
-                const response = generateAIResponse(message);
-                addAIMessage('assistant', response);
-            }, 1000);
-        }
-
-        // AI 메시지 추가
-        function addAIMessage(type, content) {
-            const messagesContainer = document.getElementById('aiMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `ai-message ${type}`;
-            messageDiv.textContent = content;
-            messagesContainer.appendChild(messageDiv);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-
-        // AI 응답 생성 (시뮬레이션)
-        function generateAIResponse(userMessage) {
-            const responses = {
-                'hello': '안녕하세요! 코딩에 관해 어떤 도움이 필요하신가요?',
-                'help': '다음과 같은 도움을 드릴 수 있습니다:\n• 코드 리뷰 및 최적화\n• 버그 찾기 및 수정\n• 프로그래밍 질문 답변\n• 코드 설명',
-                'bug': '버그를 찾고 계시는군요! 코드를 붙여넣어 주시면 분석해드리겠습니다.',
-                'optimize': '코드 최적화를 원하시는군요. 현재 코드를 공유해주시면 개선점을 제안드리겠습니다.',
-                'default': '죄송하지만 정확히 이해하지 못했습니다. 더 구체적으로 설명해주시거나 코드를 공유해주세요.'
-            };
-
-            const lowerMessage = userMessage.toLowerCase();
-            
-            if (lowerMessage.includes('안녕') || lowerMessage.includes('hello')) {
-                return responses.hello;
-            } else if (lowerMessage.includes('도움') || lowerMessage.includes('help')) {
-                return responses.help;
-            } else if (lowerMessage.includes('버그') || lowerMessage.includes('오류') || lowerMessage.includes('에러')) {
-                return responses.bug;
-            } else if (lowerMessage.includes('최적화') || lowerMessage.includes('개선')) {
-                return responses.optimize;
-            } else if (userMessage.includes('function') || userMessage.includes('console.log') || userMessage.includes('var ') || userMessage.includes('let ') || userMessage.includes('const ')) {
-                return '코드를 분석해보니 JavaScript 코드네요! 다음과 같은 개선점을 제안합니다:\n• 변수명을 더 명확하게 지정\n• 주석 추가로 가독성 향상\n• 에러 처리 추가 고려';
-            } else {
-                return responses.default;
-            }
-        }
-
-        // 디바운스 함수
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        }
-
-        // 모달 외부 클릭으로 닫기
-        document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('modal')) {
-                e.target.classList.remove('show');
-            }
-        });
-    </script>
-</body>
-</html>
-                
+            <!--
