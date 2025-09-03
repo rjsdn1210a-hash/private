@@ -3,76 +3,107 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Team Site – Simple Sponsor Deck</title>
-  <meta name="description" content="팀 소개와 작업 현황을 한눈에 보여주는 원페이지 사이트" />
+  <title>단단 DanDan – SSRC TEAM • 2025</title>
+  <meta name="description" content="단단(DanDan) SSRC TEAM의 2025 시즌 결과/제작과정/로드맵을 한눈에 보여주는 원페이지 팀 사이트" />
   <style>
     :root{
-      --bg:#0b0f14; --panel:#111827; --muted:#94a3b8; --text:#e5e7eb; --brand:#22c55e; --brand-2:#2dd4bf; --accent:#3b82f6; --card:#0f172a; --ring:#334155;
+      /* Brand from guide: 진한 초록(#035735, #055936) + 보조색 */
+      --bg:#0b0f14; --panel:#0f172a; --muted:#94a3b8; --text:#e5e7eb;
+      --brand:#035735; --brand-2:#055936; --accent:#3b82f6; --ring:#334155;
+      --card:#101826;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,Pretendard,Helvetica,Arial,sans-serif;background:
-      radial-gradient(1200px 800px at 10% -10%,rgba(45,212,191,.12),rgba(0,0,0,0)),
+      radial-gradient(1200px 800px at 10% -10%,rgba(5,89,54,.12),rgba(0,0,0,0)),
       radial-gradient(1000px 600px at 110% 10%,rgba(59,130,246,.08),rgba(0,0,0,0)),
-      var(--bg);color:var(--text);line-height:1.6}
+      var(--bg);color:var(--text);line-height:1.65;-webkit-font-smoothing:antialiased}
     a{color:inherit;text-decoration:none}
-    .container{max-width:1100px;margin:0 auto;padding:1.2rem}
-    header.nav{position:sticky;top:0;backdrop-filter:saturate(140%) blur(12px);background:rgba(17,24,39,.6);border-bottom:1px solid var(--ring);z-index:50}
+    img{max-width:100%;display:block}
+    .container{max-width:1180px;margin:0 auto;padding:1.2rem}
+    .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+    /* Top nav */
+    header.nav{position:sticky;top:0;backdrop-filter:saturate(140%) blur(12px);background:rgba(17,24,39,.7);border-bottom:1px solid var(--ring);z-index:60}
     header .row{display:flex;align-items:center;gap:.8rem;justify-content:space-between}
-    .brand{display:flex;align-items:center;gap:.6rem;font-weight:700}
-    .brand .logo{width:28px;height:28px;border-radius:8px;background:conic-gradient(from 120deg, var(--brand), var(--brand-2), var(--accent));box-shadow:0 0 0 2px #000 inset}
-    .navlinks{display:flex;gap:.9rem;flex-wrap:wrap}
-    .navlinks a{opacity:.85;padding:.4rem .6rem;border-radius:10px}
-    .navlinks a:hover{opacity:1;background:rgba(148,163,184,.12)}
+    .brand{display:flex;align-items:center;gap:.6rem;font-weight:800}
+    .brand .logo{width:30px;height:30px;border-radius:8px;background:conic-gradient(from 120deg, var(--brand), var(--brand-2), #0ea5a0);box-shadow:0 0 0 2px #000 inset}
+    .brand span{letter-spacing:.2px}
+    .navlinks{display:flex;gap:.6rem;flex-wrap:wrap}
+    .navlinks a{opacity:.85;padding:.45rem .65rem;border-radius:10px}
+    .navlinks a:hover,.navlinks a[aria-current="page"]{opacity:1;background:rgba(148,163,184,.12);outline:2px solid transparent}
 
-    .hero{padding:3.5rem 0 2rem}
-    .hero h1{font-size:clamp(1.8rem,3.2vw,2.8rem);line-height:1.15;margin:.3rem 0}
+    /* Hero */
+    .hero{padding:3.2rem 0 2rem;display:grid;grid-template-columns:1.2fr .8fr;gap:1.2rem;align-items:center}
+    .hero h1{font-size:clamp(1.9rem,3.3vw,2.9rem);line-height:1.12;margin:.25rem 0}
     .muted{color:var(--muted)}
-    .pill{display:inline-flex;align-items:center;gap:.45rem;border:1px solid var(--ring);border-radius:999px;padding:.35rem .7rem;font-size:.9rem;color:#cbd5e1;background:rgba(2,6,23,.5)}
+    .pill{display:inline-flex;align-items:center;gap:.45rem;border:1px solid var(--ring);border-radius:999px;padding:.35rem .7rem;font-size:.9rem;color:#cbd5e1;background:rgba(2,6,23,.6)}
     .cta{display:flex;gap:.7rem;margin-top:1rem;flex-wrap:wrap}
-    .btn{display:inline-flex;align-items:center;gap:.5rem;border:1px solid var(--ring);background:#0b1220;padding:.6rem .9rem;border-radius:12px}
-    .btn.primary{border-color:transparent;background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#0a0f18;font-weight:700}
+    .btn{display:inline-flex;align-items:center;gap:.5rem;border:1px solid var(--ring);background:#0b1220;padding:.62rem .9rem;border-radius:12px}
+    .btn.primary{border-color:transparent;background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#eafff7;font-weight:800}
     .btn:hover{transform:translateY(-1px)}
+    .brand-cards{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+    .brand-card{background:linear-gradient(180deg,rgba(148,163,184,.08),rgba(15,23,42,.55));border:1px solid var(--ring);border-radius:14px;padding:.7rem}
 
+    /* Common cards */
     .grid{display:grid;gap:1rem}
     .kpi{grid-template-columns:repeat(4,minmax(0,1fr))}
     @media (max-width:900px){.kpi{grid-template-columns:repeat(2,1fr)}}
-    @media (max-width:520px){.kpi{grid-template-columns:1fr}}
+    @media (max-width:520px){.hero{grid-template-columns:1fr}.kpi{grid-template-columns:1fr}}
 
-    .card{background:linear-gradient(180deg,rgba(148,163,184,.08),rgba(15,23,42,.6));border:1px solid var(--ring);border-radius:16px;padding:1rem;box-shadow:0 10px 30px rgba(0,0,0,.25)}
-    .card h3{margin:.2rem 0 .4rem;font-size:1.05rem}
+    .card{background:linear-gradient(180deg,rgba(148,163,184,.08),rgba(15,23,42,.58));border:1px solid var(--ring);border-radius:16px;padding:1rem;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .card h3{margin:.2rem 0 .45rem;font-size:1.05rem}
     .value{font-size:1.6rem;font-weight:800}
     .sub{font-size:.9rem;color:var(--muted)}
+    .tag{font-size:.72rem;color:#94a3b8;border:1px solid var(--ring);border-radius:999px;padding:.1rem .4rem}
 
+    /* Sections */
+    section{scroll-margin-top:76px}
     .section{margin:1.6rem 0}
-    .section h2{font-size:1.3rem;margin:0 0 .6rem}
-    .section .tools{display:flex;gap:.5rem;flex-wrap:wrap}
-    .badge{display:inline-flex;align-items:center;gap:.35rem;font-size:.8rem;color:#cbd5e1;border:1px dashed var(--ring);border-radius:999px;padding:.2rem .55rem}
+    .section h2{font-size:1.25rem;margin:0 0 .6rem}
+    .row-between{display:flex;justify-content:space-between;align-items:center;gap:.6rem}
+    .tools{display:flex;gap:.5rem;flex-wrap:wrap}
+    .btn.small{padding:.35rem .55rem;border-radius:10px;font-size:.86rem}
 
+    /* Result/Process split with clearer partition */
+    .split{display:grid;grid-template-columns:1.2fr .8fr;gap:1.2rem}
+    @media (max-width:980px){.split{grid-template-columns:1fr}}
     .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
     @media (max-width:1000px){.cards{grid-template-columns:repeat(2,1fr)}}
     @media (max-width:640px){.cards{grid-template-columns:1fr}}
 
-    .tag{font-size:.72rem;color:#94a3b8;border:1px solid var(--ring);border-radius:999px;padding:.1rem .4rem}
-    .row-between{display:flex;justify-content:space-between;align-items:center;gap:.6rem}
+    /* Gallery for process images */
+    .gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-top:.5rem}
+    .gallery figure{border:1px solid var(--ring);border-radius:10px;overflow:hidden;background:rgba(2,6,23,.4)}
+    .gallery figure div{aspect-ratio:16/9;background:#0b1220;display:flex;align-items:center;justify-content:center}
+    .gallery img{width:100%;height:100%;object-fit:cover}
 
+    /* Timeline */
     .timeline{position:relative;margin-left:.6rem}
-    .timeline:before{content:"";position:absolute;left:10px;top:.2rem;bottom:.2rem;width:2px;background:linear-gradient(var(--accent),transparent)}
+    .timeline:before{content:"";position:absolute;left:10px;top:.2rem;bottom:.2rem;width:2px;background:linear-gradient(var(--brand),transparent)}
     .titem{position:relative;margin:.8rem 0 .8rem 0;padding-left:2rem}
-    .titem:before{content:"";position:absolute;left:4px;top:.15rem;width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(59,130,246,.2)}
+    .titem:before{content:"";position:absolute;left:4px;top:.15rem;width:12px;height:12px;border-radius:50%;background:var(--brand);box-shadow:0 0 0 3px rgba(3,87,53,.25)}
 
-    footer{margin:2.5rem 0 1rem;color:var(--muted)}
-
-    /* 편집 모드 UI */
-    .admin{position:fixed;right:14px;bottom:14px;display:flex;flex-direction:column;gap:.5rem;z-index:60}
+    /* Editing UI */
+    .admin{position:fixed;right:14px;bottom:14px;display:flex;flex-direction:column;gap:.5rem;z-index:80}
     .fab{border:1px solid var(--ring);background:linear-gradient(180deg,#0b1220,#0d1526);color:#e5e7eb;border-radius:12px;padding:.55rem .7rem;box-shadow:0 10px 30px rgba(0,0,0,.3)}
-    .fab.primary{background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#04121a;border-color:transparent;font-weight:800}
+    .fab.primary{background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#eafff7;border-color:transparent;font-weight:800}
     .admin-panel{position:fixed;right:14px;bottom:68px;display:none;flex-direction:column;gap:.4rem;padding:.7rem;border-radius:14px;background:#0b1220;border:1px solid var(--ring);box-shadow:0 12px 36px rgba(0,0,0,.35)}
     body.editing .admin-panel{display:flex}
-    .admin-panel .fab{width:220px;justify-content:center}
     [data-editable]{outline:none}
     body.editing [data-editable]{outline:1px dashed #475569;outline-offset:2px;border-radius:6px}
-    .tools .btn.small{padding:.35rem .55rem;border-radius:10px;font-size:.86rem}
+
+    /* Focused view: when jump links should hide other sections to avoid clutter */
+    body.focused main > *{display:none}
+    body.focused main > .section[data-focus="true"],
+    body.focused main > .split[data-focus="true"]{display:block}
+    .exit-focus{position:fixed;left:14px;bottom:14px;z-index:90;display:none}
+    body.focused .exit-focus{display:inline-flex}
+
+    /* Auto-grow for any content blocks (no fixed height) */
+    .autogrow{display:block;overflow:visible}
+    .autogrow *{overflow-wrap:anywhere;word-break:keep-all}
+    footer{margin:2.5rem 0 1rem;color:var(--muted)}
   </style>
 </head>
 <body>
@@ -80,13 +111,14 @@
     <div class="container row">
       <div class="brand">
         <div class="logo" aria-hidden="true"></div>
-        <span data-editable id="siteName">Team Name</span>
-        <span class="tag">v1 – static</span>
+        <span data-editable id="siteName">단단 · DanDan — SSRC TEAM</span>
+        <span class="tag">2025</span>
       </div>
-      <nav class="navlinks">
+      <nav class="navlinks" id="topNav">
         <a href="#results">결과</a>
         <a href="#process">제작과정</a>
         <a href="#roadmap">로드맵</a>
+        <a href="#brand">브랜드</a>
         <a href="#team">팀</a>
         <a href="#sponsors">스폰서</a>
         <a href="#contact">문의</a>
@@ -96,31 +128,50 @@
 
   <main class="container">
     <!-- HERO -->
-    <section class="hero">
-      <span class="pill">우리는 지금도 <strong style="letter-spacing:.2px">만들고</strong> 있습니다</span>
-      <h1 data-editable id="heroTitle">간단하지만 임팩트 있는 팀 사이트</h1>
-      <p class="muted" data-editable id="heroSubtitle">스폰서가 <strong>10초 안에</strong> 이해할 수 있게: 성과와 진행 현황을 한 페이지에.</p>
-      <div class="cta">
-        <a class="btn primary" id="ctaPrimary" href="#contact">후원 문의</a>
-        <a class="btn" id="ctaSecondary" href="#process">제작과정 보기</a>
+    <section class="hero" id="home">
+      <div>
+        <span class="pill">단단(DanDan) · SSRC TEAM</span>
+        <h1 data-editable id="heroTitle">거북이처럼 단단하고 끝까지 가는 팀</h1>
+        <p class="muted" data-editable id="heroSubtitle">
+          “속도보다 중요한 건 멈추지 않는 마음.” 느리더라도 포기하지 않고 꾸준히, 끝까지.
+        </p>
+        <div class="cta">
+          <a class="btn primary" id="ctaPrimary" href="#contact">후원 문의</a>
+          <a class="btn" id="ctaSecondary" href="#process">제작과정 보기</a>
+        </div>
+      </div>
+      <div class="brand-cards">
+        <div class="brand-card">
+          <strong>Color</strong>
+          <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:.5rem;margin-top:.4rem">
+            <div class="card" style="padding:.6rem;background:#ffffff;color:#0b0f14;border:1px solid #e5e7eb"><div>#ffffff</div></div>
+            <div class="card" style="padding:.6rem;background:#035735"><div>#035735</div></div>
+            <div class="card" style="padding:.6rem;background:#055936"><div>#055936</div></div>
+          </div>
+        </div>
+        <div class="brand-card">
+          <strong>Slogan</strong>
+          <p class="sub">빠르지 않아도 멈추지 않고 나아가는 꾸준함</p>
+          <p class="sub">단순하고 기억하기 쉬운 이름 “단단”</p>
+        </div>
       </div>
     </section>
 
-    <!-- KPIs -->
-    <section class="section" aria-labelledby="kpiTitle">
+    <!-- KPI -->
+    <section class="section" aria-labelledby="kpiTitle" id="kpi">
       <div class="row-between">
         <h2 id="kpiTitle">핵심 지표</h2>
-        <div class="tools"><span class="badge">편집모드에서 KPI 수정</span></div>
+        <div class="tools"><span class="tag">편집모드에서 수정</span></div>
       </div>
       <div class="grid kpi" id="kpiGrid"><!-- filled by JS --></div>
     </section>
 
-    <!-- 결과 / 제작과정 탭처럼 배치 -->
-    <div class="grid" style="grid-template-columns:1.2fr .8fr; gap:1.2rem">
+    <!-- 결과 / 제작과정 -->
+    <div class="split" id="work">
       <!-- 결과 -->
-      <section class="section" id="results">
+      <section class="section autogrow" id="results" aria-label="결과">
         <div class="row-between">
-          <h2>결과(Results)</h2>
+          <h2>결과 (Results)</h2>
           <div class="tools">
             <button class="btn small" data-act="add-result">+ 결과 추가</button>
           </div>
@@ -128,10 +179,10 @@
         <div class="cards" id="resultCards"><!-- by JS --></div>
       </section>
 
-      <!-- 제작과정 / 업데이트 -->
-      <section class="section" id="process">
+      <!-- 제작과정 -->
+      <section class="section autogrow" id="process" aria-label="제작과정">
         <div class="row-between">
-          <h2>제작과정(Updates)</h2>
+          <h2>제작과정 (Updates)</h2>
           <div class="tools">
             <button class="btn small" data-act="add-update">+ 업데이트 추가</button>
           </div>
@@ -140,8 +191,8 @@
       </section>
     </div>
 
-    <!-- 로드맵 / 타임라인 -->
-    <section class="section" id="roadmap">
+    <!-- 로드맵 -->
+    <section class="section" id="roadmap" aria-label="로드맵">
       <div class="row-between">
         <h2>로드맵 & 마일스톤</h2>
         <div class="tools">
@@ -151,9 +202,41 @@
       <div class="card timeline" id="timeline"><!-- by JS --></div>
     </section>
 
+    <!-- 브랜드(이미지에서 온 가이드 요약) -->
+    <section class="section" id="brand" aria-label="브랜드">
+      <div class="row-between">
+        <h2>브랜드 가이드</h2>
+        <div class="tools">
+          <span class="tag">색/슬로건/미션은 편집모드로 직접 수정 가능</span>
+        </div>
+      </div>
+      <div class="grid" style="grid-template-columns:1.2fr .8fr;gap:1.2rem">
+        <article class="card">
+          <h3>미션 & 비전</h3>
+          <ul class="sub">
+            <li>창의적 협업으로 더 나은 로봇 제작</li>
+            <li>거북이처럼 멈추지 않고 앞으로 전진</li>
+            <li>서로의 힘을 모아 단단하고 튼튼한 결과</li>
+            <li>과정 속에서 함께 성장</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>로고 샘플</h3>
+          <div class="grid" style="grid-template-columns:1fr 1fr;gap:.6rem">
+            <figure class="card" style="padding:0">
+              <img alt="팀 로고 & 브랜드 가이드" src="e5ba3a60-2fa1-42f8-bfad-ca47429e0290.png">
+            </figure>
+            <figure class="card" style="padding:0">
+              <img alt="팀 미션과 비전" src="d8a40eb2-0e76-43a5-ac19-3a875693787f.png">
+            </figure>
+          </div>
+        </article>
+      </div>
+    </section>
+
     <!-- 팀 / 스폰서 -->
     <div class="grid" style="grid-template-columns:1fr 1fr;gap:1.2rem">
-      <section class="section" id="team">
+      <section class="section" id="team" aria-label="팀">
         <div class="row-between">
           <h2>팀</h2>
           <div class="tools"><button class="btn small" data-act="add-member">+ 팀원 추가</button></div>
@@ -161,7 +244,7 @@
         <div class="cards" id="teamCards"><!-- by JS --></div>
       </section>
 
-      <section class="section" id="sponsors">
+      <section class="section" id="sponsors" aria-label="스폰서">
         <div class="row-between">
           <h2>스폰서</h2>
           <div class="tools"><button class="btn small" data-act="add-sponsor">+ 스폰서 추가</button></div>
@@ -171,27 +254,30 @@
     </div>
 
     <!-- 문의 -->
-    <section class="section" id="contact">
+    <section class="section" id="contact" aria-label="문의">
       <div class="row-between">
         <h2>문의</h2>
-        <div class="tools"><span class="badge">상단 버튼 텍스트/링크도 편집 가능</span></div>
+        <div class="tools"><span class="tag">상단 버튼 텍스트/링크도 편집 가능</span></div>
       </div>
       <div class="card">
-        <p><strong>담당</strong>: <span data-editable id="contactPerson">홍길동</span></p>
+        <p><strong>담당</strong>: <span data-editable id="contactPerson">김재</span></p>
         <p><strong>이메일</strong>: <a href="mailto:" data-editable id="contactEmail">team@example.com</a></p>
         <p class="sub">Github/YouTube/Instagram 등 링크는 업데이트 카드나 팀 카드에 첨부하세요.</p>
       </div>
     </section>
 
     <footer>
-      <p>© <span id="year"></span> <span id="siteNameFoot">Team Name</span>. All rights reserved.</p>
+      <p>© <span id="year"></span> <span id="siteNameFoot">DanDan SSRC TEAM</span>. All rights reserved.</p>
     </footer>
   </main>
 
+  <!-- Focus mode exit -->
+  <a class="btn exit-focus" id="exitFocus" href="#">전체 보기</a>
+
   <!-- 편집 모드 FAB -->
-  <div class="admin">
+  <div class="admin" role="region" aria-label="편집 도구">
     <button class="fab" id="toggleEdit">✎ 편집 모드</button>
-    <div class="admin-panel" aria-label="편집 도구">
+    <div class="admin-panel">
       <button class="fab primary" id="save">저장</button>
       <button class="fab" id="export">내보내기(JSON)</button>
       <label class="fab" style="cursor:pointer">
@@ -203,11 +289,16 @@
   </div>
 
   <script>
-    // ----- 데이터 모델 (필요시 자유롭게 필드 추가 가능) -----
-    const STORAGE_KEY = 'teamSiteData_v1';
+    // ----- 데이터 모델 -----
+    const STORAGE_KEY = 'teamSiteData_v2';
     const defaultData = {
-      site:{ name: 'Team Name' },
-      hero:{ title:'간단하지만 임팩트 있는 팀 사이트', subtitle:'스폰서가 10초 안에 이해할 수 있게: 성과와 진행 현황을 한 페이지에.', ctaPrimaryText:'후원 문의', ctaPrimaryLink:'#contact', ctaSecondaryText:'제작과정 보기', ctaSecondaryLink:'#process' },
+      site:{ name: '단단 · DanDan — SSRC TEAM' },
+      hero:{
+        title:'거북이처럼 단단하고 끝까지 가는 팀',
+        subtitle:'“속도보다 중요한 건 멈추지 않는 마음.” 느리더라도 포기하지 않고 꾸준히, 끝까지.',
+        ctaPrimaryText:'후원 문의', ctaPrimaryLink:'#contact',
+        ctaSecondaryText:'제작과정 보기', ctaSecondaryLink:'#process'
+      },
       kpis:[
         {label:'주요 기능 완성도', value:'70%', sub:'MVP 기준'},
         {label:'테스트 누적 시간', value:'120h', sub:'시뮬+현장'},
@@ -220,9 +311,9 @@
         {title:'문서화', metric:'문서 35개', desc:'설계/전장/소프트웨어 위키', link:''}
       ],
       updates:[
-        {date:dateStr(-6), title:'드라이브 트레인 개정', status:'in-progress', tags:['mechanical'], desc:'체인 텐션 조정 및 하우징 보강', link:''},
-        {date:dateStr(-3), title:'경로 계획 알고리즘 튜닝', status:'done', tags:['software'], desc:'PID 게인 리파인 및 곡선 추종 안정화', link:''},
-        {date:dateStr(-1), title:'배터리 리스케줄링', status:'in-review', tags:['ops'], desc:'사이클 관리표 자동화', link:''}
+        {date:dateStr(-6), title:'드라이브 트레인 개정', status:'in-progress', tags:['mechanical'], desc:'체인 텐션 조정 및 하우징 보강', images:[], link:''},
+        {date:dateStr(-3), title:'경로 계획 알고리즘 튜닝', status:'done', tags:['software'], desc:'PID 게인 리파인 및 곡선 추종 안정화', images:[], link:''},
+        {date:dateStr(-1), title:'배터리 리스케줄링', status:'in-review', tags:['ops'], desc:'사이클 관리표 자동화', images:[], link:''}
       ],
       milestones:[
         {date:dateStr(-14), title:'킥오프 & 요구사항 정리', note:'목표지표(KPI) 합의'},
@@ -239,25 +330,22 @@
         {name:'Acme Corp', link:'', logo:''},
         {name:'Beta Lab', link:'', logo:''}
       ],
-      contact:{ person:'홍길동', email:'team@example.com' }
+      contact:{ person:'김재', email:'team@example.com' }
     };
 
-    function dateStr(dOffset){
-      const d = new Date(); d.setDate(d.getDate()+dOffset); return d.toISOString().slice(0,10);
-    }
-
+    function dateStr(dOffset){ const d = new Date(); d.setDate(d.getDate()+dOffset); return d.toISOString().slice(0,10); }
     let state = load();
 
     // ----- 렌더러 -----
     function render(){
-      // 사이트명/헤더/푸터
+      // 사이트명/푸터/연도
       byId('siteName').textContent = state.site.name;
       byId('siteNameFoot').textContent = state.site.name;
       byId('year').textContent = new Date().getFullYear();
 
       // 히어로
       byId('heroTitle').textContent = state.hero.title;
-      byId('heroSubtitle').innerHTML = escapeHtml(state.hero.subtitle).replace(/\*\*(.*?)\*\*/g,'<strong>$1<\/strong>');
+      byId('heroSubtitle').textContent = state.hero.subtitle;
       setLink('ctaPrimary', state.hero.ctaPrimaryText, state.hero.ctaPrimaryLink);
       setLink('ctaSecondary', state.hero.ctaSecondaryText, state.hero.ctaSecondaryLink);
 
@@ -273,12 +361,12 @@
         kpi.appendChild(el);
       });
 
-      // 결과 카드
+      // 결과
       const res = byId('resultCards'); res.innerHTML='';
       state.results.forEach((r, i)=>{
         const el = div(`
-          <article class="card">
-            <div class="row-between"><h3>${escapeHtml(r.title)}</h3><span class="tag">${escapeHtml(r.metric)}</span></div>
+          <article class="card autogrow">
+            <div class="row-between"><h3>${escapeHtml(r.title)}</h3><span class="tag">${escapeHtml(r.metric || '')}</span></div>
             <p class="sub">${escapeHtml(r.desc||'')}</p>
             ${r.link?`<p><a href="${escapeAttr(r.link)}" class="btn small" style="margin-top:.4rem">자세히</a></p>`:''}
             ${editBtns('result', i)}
@@ -286,16 +374,21 @@
         res.appendChild(el);
       });
 
-      // 업데이트 카드
+      // 업데이트 (이미지 갤러리 포함)
       const upd = byId('updateCards'); upd.innerHTML='';
       state.updates.sort((a,b)=> (b.date||'').localeCompare(a.date||'') );
       state.updates.forEach((u,i)=>{
         const tags = (u.tags||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join(' ');
+        const gallery = (u.images && u.images.length) ?
+          `<div class="gallery">${
+            u.images.slice(0,6).map(src => `<figure><div><img alt="update image" src="${escapeAttr(src)}"></div></figure>`).join('')
+          }</div>` : '';
         const el = div(`
-          <article class="card">
-            <div class="row-between"><h3>${escapeHtml(u.title)}</h3><span class="badge">${escapeHtml(u.status||'')}</span></div>
+          <article class="card autogrow">
+            <div class="row-between"><h3>${escapeHtml(u.title)}</h3><span class="tag">${escapeHtml(u.status||'')}</span></div>
             <p class="sub">${escapeHtml(u.date||'')}${u.date?' · ':''}${tags}</p>
             <p>${escapeHtml(u.desc||'')}</p>
+            ${gallery}
             ${u.link?`<p><a href="${escapeAttr(u.link)}" class="btn small" style="margin-top:.4rem">관련 링크</a></p>`:''}
             ${editBtns('update', i)}
           </article>`);
@@ -342,26 +435,21 @@
         sp.appendChild(el);
       });
 
-      // 연락처 표기
+      // 연락처
       byId('contactPerson').textContent = state.contact.person || '';
       const emailEl = byId('contactEmail');
       emailEl.textContent = state.contact.email || '';
       emailEl.href = 'mailto:'+(state.contact.email||'');
 
-      // 편집 가능 마커 초기화 (편집 모드일 때만 contenteditable)
+      // 편집 가능 마커
       setEditable(document.body.classList.contains('editing'));
+
+      // 포커스 적용
+      applyFocusFromHash();
     }
 
-    function setEditable(on){
-      document.querySelectorAll('[data-editable]').forEach(el=>{
-        el.setAttribute('contenteditable', on ? 'true':'false');
-      });
-    }
-
-    function setLink(id, text, href){
-      const el = byId(id); el.textContent = text || ''; el.href = href || '#';
-    }
-
+    function setEditable(on){ document.querySelectorAll('[data-editable]').forEach(el=> el.setAttribute('contenteditable', on ? 'true':'false')); }
+    function setLink(id, text, href){ const el = byId(id); el.textContent = text || ''; el.href = href || '#'; }
     function editBtns(kind, i){
       return `<div class="tools" style="margin-top:.6rem;display:${document.body.classList.contains('editing')?'flex':'none'}">
         <button class="btn small" data-kind="${kind}" data-idx="${i}" data-cmd="edit">수정</button>
@@ -372,60 +460,51 @@
     // ----- 유틸 -----
     function byId(id){ return document.getElementById(id); }
     function div(html){ const el = document.createElement('div'); el.innerHTML = html.trim(); return el.firstElementChild; }
-    function escapeHtml(s=''){ return s.replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+    function escapeHtml(s=''){ return s.replace(/[&<>\"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
     function escapeAttr(s=''){ return s.replace(/"/g,'&quot;'); }
 
-    function load(){
-      try{ const raw = localStorage.getItem(STORAGE_KEY); return raw? JSON.parse(raw): structuredClone(defaultData);}catch(e){ return structuredClone(defaultData); }
-    }
+    function load(){ try{ const raw = localStorage.getItem(STORAGE_KEY); return raw? JSON.parse(raw): structuredClone(defaultData);}catch(e){ return structuredClone(defaultData); } }
     function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
     function backupDownload(obj, filename){ const blob = new Blob([JSON.stringify(obj,null,2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click(); URL.revokeObjectURL(a.href); }
 
-    // ----- 편집 모드 제어 -----
+    // ----- 편집 모드 -----
     byId('toggleEdit').addEventListener('click',()=>{
       document.body.classList.toggle('editing');
       render();
       if(document.body.classList.contains('editing')){
-        alert('편집 모드 활성화\n- 텍스트를 직접 수정하고\n- 각 섹션의 + 버튼으로 카드 추가\n- 우측 하단 패널에서 저장/내보내기/가져오기/초기화 가능합니다.');
+        alert('편집 모드 활성화\\n- 텍스트 직접 수정\\n- + 버튼으로 카드 추가\\n- 저장/내보내기/가져오기 가능');
       }
     });
 
-    // 저장: contenteditable 반영 + state 저장
     byId('save').addEventListener('click',()=>{
-      // 히어로/사이트명/연락처
       state.site.name = byId('siteName').textContent.trim();
       state.hero.title = byId('heroTitle').textContent.trim();
       state.hero.subtitle = byId('heroSubtitle').textContent.trim();
       state.contact.person = byId('contactPerson').textContent.trim();
       state.contact.email = byId('contactEmail').textContent.trim();
-      // KPI 값(수정 가능)
       document.querySelectorAll('[data-kpi]').forEach(el=>{
         const i = +el.dataset.i; const what = el.dataset.kpi;
         state.kpis[i][what] = el.textContent.trim();
       });
       save();
-      alert('저장 완료 (이 브라우저에 보존됩니다). 내보내기로 백업도 해두세요.');
+      alert('저장 완료 (이 브라우저에 보존). 내보내기로 백업하세요.');
       render();
     });
 
-    // 내보내기/가져오기/초기화
-    byId('export').addEventListener('click',()=> backupDownload(state, `${(state.site.name||'team').replace(/\s+/g,'_')}-site.json`) );
+    byId('export').addEventListener('click',()=> backupDownload(state, `${(state.site.name||'team').replace(/\\s+/g,'_')}-site.json`) );
     byId('import').addEventListener('change', async (e)=>{
       const file = e.target.files?.[0]; if(!file) return; const text = await file.text();
       try{ const data = JSON.parse(text); state = data; save(); render(); alert('불러오기 완료'); }
-      catch(err){ alert('가져오기 실패: JSON 형식을 확인하세요'); }
+      catch(err){ alert('가져오기 실패: JSON 형식을 확인'); }
       e.target.value = '';
     });
     byId('reset').addEventListener('click',()=>{
-      if(confirm('예시 데이터로 초기화할까요? 기존 내용은 이 브라우저에서 삭제됩니다.')){
-        state = structuredClone(defaultData); save(); render();
-      }
+      if(confirm('예시 데이터로 초기화할까요?')){ state = structuredClone(defaultData); save(); render(); }
     });
 
-    // 섹션별 추가 버튼
+    // 섹션별 추가
     document.body.addEventListener('click', (e)=>{
-      const act = e.target.closest('[data-act]')?.dataset.act;
-      if(!act) return;
+      const act = e.target.closest('[data-act]')?.dataset.act; if(!act) return;
       if(!document.body.classList.contains('editing')){ alert('편집 모드에서 사용하세요.'); return; }
       if(act==='add-result') addResult();
       if(act==='add-update') addUpdate();
@@ -434,7 +513,7 @@
       if(act==='add-member') addMember();
     });
 
-    // 카드 수정/삭제 버튼
+    // 카드 수정/삭제
     document.body.addEventListener('click',(e)=>{
       const btn = e.target.closest('button[data-cmd]'); if(!btn) return;
       if(!document.body.classList.contains('editing')){ alert('편집 모드에서 사용하세요.'); return; }
@@ -464,8 +543,14 @@
           const dt = prompt('날짜(YYYY-MM-DD)', state.updates[i].date||dateStr(0)); if(dt==null) return;
           const g = prompt('태그(쉼표로 구분)', (state.updates[i].tags||[]).join(',')); if(g==null) return;
           const d = prompt('설명', state.updates[i].desc||''); if(d==null) return;
+          const imgs = prompt('이미지 URL들(쉼표로 구분, 최대 6)', (state.updates[i].images||[]).join(','));
           const l = prompt('링크(URL 없으면 비워두기)', state.updates[i].link||'');
-          Object.assign(state.updates[i], {title:t, status:s, date:dt, tags:(g?g.split(',').map(s=>s.trim()).filter(Boolean):[]), desc:d, link:l});
+          Object.assign(state.updates[i], {
+            title:t, status:s, date:dt,
+            tags:(g?g.split(',').map(s=>s.trim()).filter(Boolean):[]),
+            desc:d, images:(imgs?imgs.split(',').map(s=>s.trim()).filter(Boolean):[]),
+            link:l
+          });
         }
         if(kind==='milestone'){
           const t = prompt('제목', state.milestones[i].title); if(t==null) return;
@@ -489,7 +574,7 @@
       }
     });
 
-    // 추가 팝업(간단히 prompt 사용)
+    // 추가 팝업
     function addResult(){
       const title = prompt('결과 제목 (예: 주행 성공률)'); if(!title) return;
       const metric = prompt('지표/수치 (예: 92%)','');
@@ -503,8 +588,9 @@
       const date = prompt('날짜(YYYY-MM-DD)', dateStr(0));
       const tags = prompt('태그(쉼표로 구분, 예: mech,drive)','');
       const desc = prompt('설명','');
+      const images = prompt('이미지 URL들(쉼표로 구분, 최대 6)','');
       const link = prompt('링크(URL, 선택)','');
-      state.updates.push({title,status,date,tags: (tags? tags.split(',').map(s=>s.trim()).filter(Boolean):[]), desc, link}); save(); render();
+      state.updates.push({title,status,date,tags: (tags? tags.split(',').map(s=>s.trim()).filter(Boolean):[]), desc, images: (images? images.split(',').map(s=>s.trim()).filter(Boolean):[]), link}); save(); render();
     }
     function addMilestone(){
       const title = prompt('마일스톤 제목'); if(!title) return;
@@ -525,8 +611,35 @@
       state.team.push({name,role,link}); save(); render();
     }
 
-    // 초기 렌더링
+    // ----- 해시 포커스 모드 -----
+    const focusable = new Set(['results','process','roadmap','brand','team','sponsors','contact']);
+    function applyFocusFromHash(){
+      const id = (location.hash||'').replace('#','');
+      const children = Array.from(document.querySelectorAll('main > *'));
+      children.forEach(c=>c.removeAttribute('data-focus'));
+      if(focusable.has(id)){
+        document.body.classList.add('focused');
+        children.forEach(sec=>{
+          const match = sec.id===id || (sec.classList.contains('split') && (sec.querySelector('#'+id)));
+          sec.dataset.focus = match ? 'true':'false';
+        });
+        // set aria-current on nav
+        document.querySelectorAll('#topNav a').forEach(a=> a.removeAttribute('aria-current'));
+        const current = document.querySelector(`#topNav a[href="#${id}"]`); if(current) current.setAttribute('aria-current','page');
+      }else{
+        document.body.classList.remove('focused');
+        document.querySelectorAll('#topNav a').forEach(a=> a.removeAttribute('aria-current'));
+      }
+    }
+    window.addEventListener('hashchange', applyFocusFromHash);
+    byId('exitFocus').addEventListener('click', (e)=>{
+      e.preventDefault(); history.pushState('', document.title, window.location.pathname + window.location.search);
+      applyFocusFromHash();
+    });
+
+    // 초기 렌더
     render();
   </script>
+  <!-- 이미지 파일은 같은 폴더에 저장되어 있다고 가정: e5ba3a60...png, d8a40e...png -->
 </body>
 </html>
